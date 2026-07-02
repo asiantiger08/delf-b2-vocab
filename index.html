@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <title>DELF B2 词汇卡</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="data/vocab.js" defer></script>
+    <script src="data/vocab-3000.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">DELF B2</p>
+        <h1>法语词汇卡</h1>
+      </div>
+      <button class="icon-button" id="installBtn" type="button" title="安装到手机主屏幕" aria-label="安装">
+        +
+      </button>
+    </header>
+
+    <main>
+      <section class="stats" aria-label="学习统计">
+        <div>
+          <strong id="totalCount">0</strong>
+          <span>词条</span>
+        </div>
+        <div>
+          <strong id="knownCount">0</strong>
+          <span>已掌握</span>
+        </div>
+        <div>
+          <strong id="accuracy">0%</strong>
+          <span>正确率</span>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="主要视图">
+        <button class="tab active" type="button" data-view="browse">查询</button>
+        <button class="tab" type="button" data-view="quiz">测试</button>
+        <button class="tab" type="button" data-view="manage">词库</button>
+      </nav>
+
+      <section class="panel active" id="browseView">
+        <div class="toolbar">
+          <input id="searchInput" type="search" placeholder="搜索法语、中文、例句..." autocomplete="off" />
+          <select id="categorySelect" aria-label="分类">
+            <option value="all">全部分类</option>
+          </select>
+        </div>
+        <div class="chips" id="levelChips" aria-label="筛选">
+          <button class="chip active" type="button" data-tag="all">全部</button>
+          <button class="chip" type="button" data-tag="高频">高频</button>
+          <button class="chip" type="button" data-tag="写作">写作</button>
+          <button class="chip" type="button" data-tag="口语">口语</button>
+        </div>
+        <div class="word-list" id="wordList"></div>
+      </section>
+
+      <section class="panel" id="quizView">
+        <div class="quiz-card">
+          <div class="quiz-meta">
+            <span id="quizDirection">法语 → 中文</span>
+            <button id="switchQuiz" type="button">切换方向</button>
+          </div>
+          <p class="quiz-category" id="quizCategory"></p>
+          <h2 id="quizPrompt"></h2>
+          <input id="answerInput" type="text" placeholder="输入答案" autocomplete="off" />
+          <div class="quiz-actions">
+            <button id="checkAnswer" class="primary" type="button">检查</button>
+            <button id="nextCard" type="button">下一张</button>
+          </div>
+          <div class="feedback" id="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="manageView">
+        <div class="manage-block">
+          <h2>词库目标</h2>
+          <p>
+            目标词库为 4000 个 DELF B2 高频词和短语。当前版本已包含 3000+ 个可查询、可测试词条，
+            精写词条在 <code>data/vocab.js</code>，扩展包在 <code>data/vocab-3000.js</code>。
+          </p>
+          <label class="file-import">
+            导入 JSON 词库
+            <input id="importFile" type="file" accept="application/json" />
+          </label>
+          <button id="exportProgress" type="button">导出学习记录</button>
+          <button id="resetProgress" type="button">清空学习记录</button>
+        </div>
+        <div class="manage-block">
+          <h2>词条格式</h2>
+          <pre>{
+  "fr": "remettre en question",
+  "zh": "质疑，重新考虑",
+  "category": "观点与论证",
+  "tags": ["高频", "写作"],
+  "examples": [
+    {"fr": "Cette réforme remet en question nos habitudes.", "zh": "这项改革质疑了我们的习惯。"}
+  ]
+}</pre>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="detail-dialog" id="detailDialog">
+      <div class="detail-head">
+        <div>
+          <p class="eyebrow" id="detailCategory"></p>
+          <h2 id="detailTitle"></h2>
+          <p class="translation" id="detailTranslation"></p>
+        </div>
+        <button class="icon-button" id="closeDetail" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="detail-body" id="detailBody"></div>
+    </dialog>
+  </body>
+</html>
