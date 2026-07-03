@@ -1,4 +1,4 @@
-const CACHE = "delf-b2-vocab-v6";
+const CACHE = "delf-b2-vocab-v7";
 const ASSETS = [
   "./",
   "./index.html",
