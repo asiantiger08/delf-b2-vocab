@@ -140,6 +140,161 @@ const CATEGORY_RELATIONS = {
   }
 };
 
+const LEXICAL_RELATIONS = {
+  analyser: {
+    aide: "ana- 分解 + -lyser 分析",
+    root: "analyse, analytique, analyser",
+    derived: ["analyse", "analyste", "analytique", "analytiquement", "réanalyse"],
+    synonyms: ["étudier", "examiner", "observer", "décomposer", "interpréter", "évaluer", "scruter", "décortiquer"],
+    antonyms: ["ignorer", "négliger", "survoler", "confondre", "simplifier à l'excès", "généraliser"],
+    associations: ["données", "résultats", "causes", "effets", "méthode", "critères", "rapport", "enquête"]
+  },
+  aborder: {
+    aide: "a- + bord: arriver au bord d'un sujet",
+    root: "bord, aborder, abord",
+    derived: ["abord", "abordable", "inabordable", "abordage", "abordé"],
+    synonyms: ["traiter", "évoquer", "examiner", "parler de", "s'attaquer à", "approcher", "considérer", "étudier"],
+    antonyms: ["éviter", "éluder", "ignorer", "passer sous silence", "négliger", "contourner"],
+    associations: ["sujet", "problème", "question", "débat", "thème", "angle", "discussion", "argument"]
+  },
+  améliorer: {
+    aide: "meilleur -> améliorer: rendre meilleur",
+    root: "meilleur, amélioration",
+    derived: ["amélioration", "amélioré", "améliorable", "s'améliorer", "réaméliorer"],
+    synonyms: ["perfectionner", "optimiser", "renforcer", "corriger", "faire progresser", "bonifier", "développer", "moderniser"],
+    antonyms: ["aggraver", "détériorer", "dégrader", "empirer", "affaiblir", "abîmer"],
+    associations: ["qualité", "résultats", "conditions", "performance", "service", "niveau", "situation", "efficacité"]
+  },
+  renforcer: {
+    aide: "re- + force: rendre plus fort",
+    root: "force, fort, renforcement",
+    derived: ["renforcement", "force", "fortifier", "renforcé", "fort"],
+    synonyms: ["consolider", "fortifier", "accroître", "augmenter", "intensifier", "soutenir", "muscler", "solidifier"],
+    antonyms: ["affaiblir", "fragiliser", "diminuer", "réduire", "relâcher", "amoindrir"],
+    associations: ["sécurité", "contrôle", "coopération", "compétences", "mesures", "protection", "confiance", "cohésion"]
+  },
+  réduire: {
+    aide: "ré- 回向 + duc/duire 引导: ramener à une quantité plus faible",
+    root: "duc(t), duire, duit",
+    derived: ["réduction", "réducteur", "réductible", "irréductible", "réduit"],
+    synonyms: ["diminuer", "baisser", "abaisser", "limiter", "restreindre", "amoindrir", "alléger", "atténuer", "minimiser", "rabaisser"],
+    antonyms: ["augmenter", "accroître", "agrandir", "amplifier", "élargir", "hausser", "intensifier", "multiplier", "renforcer", "aggraver"],
+    associations: ["diminuer", "limiter", "minimiser", "atténuer", "alléger", "abaisser", "éliminer", "optimiser", "compression", "restriction"]
+  },
+  favoriser: {
+    aide: "faveur -> favoriser: rendre favorable",
+    root: "faveur, favorable",
+    derived: ["faveur", "favorable", "favorisé", "défavorisé", "favoritisme"],
+    synonyms: ["encourager", "faciliter", "stimuler", "promouvoir", "soutenir", "avantager", "aider", "contribuer à"],
+    antonyms: ["freiner", "empêcher", "entraver", "défavoriser", "bloquer", "limiter"],
+    associations: ["accès", "égalité", "innovation", "échanges", "réussite", "participation", "intégration", "croissance"]
+  },
+  prévenir: {
+    aide: "pré- avant + venir: agir avant qu'un problème arrive",
+    root: "venir, prévention",
+    derived: ["prévention", "préventif", "prévenu", "prévenance", "prévenir"],
+    synonyms: ["éviter", "empêcher", "anticiper", "avertir", "alerter", "protéger", "limiter les risques", "devancer"],
+    antonyms: ["provoquer", "aggraver", "laisser faire", "négliger", "exposer", "favoriser le risque"],
+    associations: ["risque", "maladie", "accident", "campagne", "dépistage", "information", "alerte", "sécurité"]
+  },
+  limiter: {
+    aide: "limite -> limiter: fixer une frontière",
+    root: "limite, limitation",
+    derived: ["limite", "limitation", "limité", "illimité", "délimiter"],
+    synonyms: ["restreindre", "réduire", "borner", "encadrer", "freiner", "contenir", "modérer", "plafonner"],
+    antonyms: ["élargir", "étendre", "augmenter", "libérer", "dépasser", "amplifier"],
+    associations: ["seuil", "règle", "cadre", "contrôle", "restriction", "plafond", "frontière", "mesure"]
+  },
+  encourager: {
+    aide: "courage -> encourager: donner du courage",
+    root: "courage, encouragement",
+    derived: ["encouragement", "courage", "encourageant", "décourager", "courageux"],
+    synonyms: ["inciter", "motiver", "stimuler", "soutenir", "favoriser", "pousser à", "promouvoir", "aider"],
+    antonyms: ["décourager", "freiner", "dissuader", "empêcher", "bloquer", "affaiblir"],
+    associations: ["motivation", "soutien", "initiative", "participation", "effort", "réussite", "confiance", "engagement"]
+  },
+  développer: {
+    aide: "dé- + envelopper: déplier, faire croître",
+    root: "développement, développer",
+    derived: ["développement", "développé", "développeur", "développable", "codéveloppement"],
+    synonyms: ["faire croître", "étendre", "élargir", "approfondir", "renforcer", "promouvoir", "créer", "faire progresser"],
+    antonyms: ["réduire", "freiner", "bloquer", "limiter", "restreindre", "affaiblir"],
+    associations: ["projet", "compétences", "économie", "territoire", "innovation", "stratégie", "croissance", "formation"]
+  },
+  protéger: {
+    aide: "pro- en avant + teger/couvrir: mettre à l'abri",
+    root: "protection, protecteur",
+    derived: ["protection", "protecteur", "protégé", "surprotéger", "déprotéger"],
+    synonyms: ["préserver", "sauvegarder", "défendre", "mettre à l'abri", "sécuriser", "garantir", "conserver", "abriter"],
+    antonyms: ["menacer", "exposer", "fragiliser", "détruire", "abandonner", "mettre en danger"],
+    associations: ["sécurité", "droits", "données", "santé", "environnement", "biodiversité", "prévention", "garantie"]
+  },
+  garantir: {
+    aide: "garant -> garantir: assurer par une garantie",
+    root: "garant, garantie",
+    derived: ["garantie", "garant", "garanti", "garantir", "garantissable"],
+    synonyms: ["assurer", "protéger", "certifier", "promettre", "sécuriser", "préserver", "rendre certain", "couvrir"],
+    antonyms: ["menacer", "compromettre", "fragiliser", "mettre en doute", "exposer", "retirer"],
+    associations: ["droit", "sécurité", "qualité", "accès", "liberté", "égalité", "protection", "preuve"]
+  },
+  souligner: {
+    aide: "ligne -> souligner: tracer sous une ligne, puis insister",
+    root: "ligne, soulignement",
+    derived: ["soulignement", "ligne", "souligné", "surligner", "interligne"],
+    synonyms: ["mettre en évidence", "insister sur", "relever", "noter", "signaler", "faire ressortir", "accentuer", "rappeler"],
+    antonyms: ["minimiser", "passer sous silence", "négliger", "ignorer", "effacer", "dissimuler"],
+    associations: ["importance", "argument", "rapport", "constat", "preuve", "enjeu", "point clé", "exemple"]
+  },
+  évaluer: {
+    aide: "valeur -> évaluer: déterminer une valeur",
+    root: "valeur, évaluation",
+    derived: ["évaluation", "valeur", "évaluateur", "évaluable", "réévaluer"],
+    synonyms: ["estimer", "mesurer", "apprécier", "juger", "examiner", "analyser", "noter", "calculer"],
+    antonyms: ["ignorer", "négliger", "sous-estimer", "surestimer", "deviner", "improviser"],
+    associations: ["critères", "résultats", "impact", "coût", "niveau", "performance", "indicateur", "bilan"]
+  },
+  transformer: {
+    aide: "trans- à travers + forme: changer de forme",
+    root: "forme, transformation",
+    derived: ["transformation", "forme", "transformé", "transformateur", "métamorphose"],
+    synonyms: ["changer", "modifier", "convertir", "métamorphoser", "réformer", "faire évoluer", "adapter", "renouveler"],
+    antonyms: ["conserver", "maintenir", "figer", "préserver intact", "stabiliser", "immobiliser"],
+    associations: ["changement", "mutation", "transition", "innovation", "réforme", "adaptation", "évolution", "modernisation"]
+  },
+  augmenter: {
+    aide: "augment- 增大",
+    root: "augmentation, augmentatif",
+    derived: ["augmentation", "augmentatif", "augmenté", "hausse", "suraugmentation"],
+    synonyms: ["accroître", "hausser", "élever", "amplifier", "intensifier", "multiplier", "grossir", "renforcer"],
+    antonyms: ["diminuer", "réduire", "baisser", "abaisser", "amoindrir", "alléger"],
+    associations: ["hausse", "croissance", "prix", "niveau", "volume", "revenu", "coût", "demande"]
+  },
+  diminuer: {
+    aide: "minus/minor 小 -> diminuer: rendre plus petit",
+    root: "diminution, mineur",
+    derived: ["diminution", "diminué", "diminutif", "amoindrissement", "mineur"],
+    synonyms: ["réduire", "baisser", "amoindrir", "alléger", "atténuer", "rabaisser", "décroître", "affaiblir"],
+    antonyms: ["augmenter", "accroître", "hausser", "amplifier", "intensifier", "agrandir"],
+    associations: ["baisse", "recul", "réduction", "déclin", "moins", "niveau", "quantité", "pourcentage"]
+  },
+  baisser: {
+    aide: "bas -> baisser: aller vers le bas",
+    root: "bas, baisse",
+    derived: ["baisse", "abaissé", "rabaisser", "abaissement", "bas"],
+    synonyms: ["diminuer", "réduire", "descendre", "abaisser", "chuter", "reculer", "fléchir", "décroître"],
+    antonyms: ["augmenter", "monter", "hausser", "accroître", "s'élever", "progresser"],
+    associations: ["prix", "taux", "niveau", "température", "chômage", "demande", "courbe", "recul"]
+  },
+  accroître: {
+    aide: "croître -> accroître: faire croître",
+    root: "croissance, accroissement",
+    derived: ["accroissement", "croissance", "croître", "accru", "croissant"],
+    synonyms: ["augmenter", "renforcer", "amplifier", "développer", "intensifier", "élargir", "multiplier", "grossir"],
+    antonyms: ["réduire", "diminuer", "baisser", "amoindrir", "restreindre", "affaiblir"],
+    associations: ["croissance", "hausse", "expansion", "volume", "risque", "demande", "production", "inégalités"]
+  }
+};
+
 function detectVerb(fr) {
   const normalized = normalize(fr);
   return VERB_PATTERNS.find(pattern => normalized.startsWith(normalize(pattern))) || null;
@@ -177,8 +332,10 @@ function enhanceWords(sourceWords) {
   return sourceWords.map(word => {
     const grammar = detectGrammar(word);
     const relation = CATEGORY_RELATIONS[word.category] || { synonyms: [], antonyms: [] };
-    const synonyms = ensureAtLeastFive(word.synonyms, relation.synonyms, word.fr);
-    const antonyms = ensureAtLeastFive(word.antonyms, relation.antonyms, word.fr);
+    const lexical = lexicalRelationFor(word, grammar);
+    const synonyms = ensureAtLeastFive(word.synonyms, lexical.synonyms, relation.synonyms, word.fr);
+    const antonyms = ensureAtLeastFive(word.antonyms, lexical.antonyms, relation.antonyms, word.fr);
+    const associations = ensureAtLeastFive(word.associations, lexical.associations, relation.synonyms, word.fr);
     return {
       ...word,
       pos: word.pos || grammar.pos,
@@ -190,15 +347,38 @@ function enhanceWords(sourceWords) {
         zh: chineseExplanation(word, grammar)
       },
       synonyms,
-      antonyms
+      antonyms,
+      associations,
+      memory: word.memory || lexical.aide || "",
+      root: word.root || lexical.root || "",
+      derived: ensureAtLeastFive(word.derived, lexical.derived, [], word.fr)
     };
   });
 }
 
-function ensureAtLeastFive(primary = [], fallback = [], fr = "") {
-  const generalFallback = ["un concept proche", "une idée voisine", "une notion liée", "une expression équivalente", "un terme associé", "une formulation comparable"];
+function lexicalRelationFor(word, grammar) {
+  const keys = [
+    grammar.verb,
+    normalize(grammar.verb || "").replace(/^s'?|^se\s+/, ""),
+    stripArticle(word.fr),
+    word.fr
+  ].filter(Boolean);
+  for (const key of keys) {
+    const normalized = normalize(key);
+    const matchedKey = Object.keys(LEXICAL_RELATIONS).find(item => normalize(item) === normalized);
+    if (matchedKey) return LEXICAL_RELATIONS[matchedKey];
+  }
+  return { synonyms: [], antonyms: [], associations: [], derived: [] };
+}
+
+function stripArticle(fr) {
+  return String(fr || "").replace(/^(le|la|les|l'|un|une|des)\s*/i, "").trim();
+}
+
+function ensureAtLeastFive(primary = [], fallback = [], secondary = [], fr = "") {
+  const generalFallback = ["notion liée", "champ lexical", "contexte", "enjeu", "exemple", "usage"];
   const result = [];
-  for (const item of [...primary, ...fallback, ...generalFallback]) {
+  for (const item of [...primary, ...fallback, ...secondary, ...generalFallback]) {
     if (item && normalize(item) !== normalize(fr) && !result.some(existing => normalize(existing) === normalize(item))) {
       result.push(item);
     }
@@ -748,6 +928,10 @@ function filteredWords() {
       word.explanation?.zh,
       ...(word.synonyms || []),
       ...(word.antonyms || []),
+      ...(word.associations || []),
+      ...(word.derived || []),
+      word.memory,
+      word.root,
       ...word.tags,
       ...word.examples.flatMap(example => [example.fr, example.zh])
     ].join(" "));
@@ -871,12 +1055,24 @@ function showDetail(word) {
       <p class="muted">${word.explanation.fr}</p>
     </section>
     <section class="detail-section">
+      <h3>助记 · Racine</h3>
+      <div class="detail-grid">
+        <div><strong>助记</strong><span>${word.memory || "暂无"}</span></div>
+        <div><strong>词根</strong><span>${word.root || "暂无"}</span></div>
+      </div>
+      <div class="pill-row detail-pills">${renderList(word.derived)}</div>
+    </section>
+    <section class="detail-section">
       <h3>近义词 · Synonymes</h3>
       <div class="pill-row">${renderList(word.synonyms)}</div>
     </section>
     <section class="detail-section">
       <h3>反义词 · Antonymes</h3>
       <div class="pill-row">${renderList(word.antonyms)}</div>
+    </section>
+    <section class="detail-section">
+      <h3>联想词 · Mots associés</h3>
+      <div class="pill-row">${renderList(word.associations)}</div>
     </section>
     ${renderConjugation(word)}
     <section class="detail-section">

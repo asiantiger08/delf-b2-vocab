@@ -342,6 +342,10 @@ select {
   gap: 7px;
 }
 
+.detail-pills {
+  margin-top: 8px;
+}
+
 .pill {
   border: 1px solid var(--line);
   border-radius: 999px;
