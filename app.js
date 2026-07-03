@@ -184,6 +184,7 @@ function enhanceWords(sourceWords) {
       pos: word.pos || grammar.pos,
       gender: word.gender || grammar.gender,
       verb: word.verb || grammar.verb,
+      conjugationPhrase: grammar.verb ? word.fr : "",
       explanation: {
         fr: frenchExplanation(word, grammar),
         zh: chineseExplanation(word, grammar)
@@ -288,7 +289,13 @@ function withPronouns(pronouns, forms) {
 }
 
 function joinPronoun(pronoun, form) {
-  return `${pronoun} ${form}`.replace(/\s+/g, " ").replace(/\bje ([aeiouhéèê])/i, "j'$1").replace("' ", "'");
+  return `${pronoun} ${form}`
+    .replace(/\s+/g, " ")
+    .replace(/\bje ([aeiouhéèê])/i, "j'$1")
+    .replace(/\bme ([aeiouhéèê])/i, "m'$1")
+    .replace(/\bte ([aeiouhéèê])/i, "t'$1")
+    .replace(/\bse ([aeiouhéèê])/i, "s'$1")
+    .replace("' ", "'");
 }
 
 function auxiliaryForms(aux, tense) {
@@ -411,6 +418,304 @@ function imperativePast(aux, participle, reflexive) {
   return [`aie ${participle}`, `ayons ${participle}`, `ayez ${participle}`].map((form, index) => aux === "etre" ? [`sois ${participle}`, `soyons ${participle}`, `soyez ${participle}`][index] : form);
 }
 
+function conjugateVerb(phrase) {
+  const parsed = parseVerbPhrase(phrase);
+  const forms = verbForms(parsed.base);
+  const aux = parsed.reflexive ? "etre" : "avoir";
+  const participle = forms.participle;
+  const finitePronouns = parsed.reflexive
+    ? ["je me", "tu te", "il/elle se", "nous nous", "vous vous", "ils/elles se"]
+    : ["je", "tu", "il/elle", "nous", "vous", "ils/elles"];
+  const subjPronouns = parsed.reflexive
+    ? ["que je me", "que tu te", "qu'il/elle se", "que nous nous", "que vous vous", "qu'ils/elles se"]
+    : ["que je", "que tu", "qu'il/elle", "que nous", "que vous", "qu'ils/elles"];
+  const simplePronouns = ["je", "tu", "il/elle", "nous", "vous", "ils/elles"];
+
+  return {
+    indicatifPresent: finite(finitePronouns, forms.present, parsed.tail),
+    indicatifPasseCompose: compoundPhrase(aux, "present", participle, parsed),
+    indicatifImparfait: finite(finitePronouns, forms.imparfait, parsed.tail),
+    indicatifPlusQueParfait: compoundPhrase(aux, "imparfait", participle, parsed),
+    indicatifPasseSimple: finite(finitePronouns, forms.passeSimple, parsed.tail),
+    indicatifPasseAnterieur: compoundPhrase(aux, "passeSimple", participle, parsed),
+    indicatifFuturSimple: finite(parsed.reflexive ? finitePronouns : simplePronouns, forms.futur, parsed.tail),
+    indicatifFuturAnterieur: compoundPhrase(aux, "futur", participle, parsed),
+    subjonctifPresent: finite(subjPronouns, forms.subjonctifPresent, parsed.tail),
+    subjonctifPasse: compoundPhrase(aux, "subjPresent", participle, parsed, true),
+    subjonctifImparfait: finite(subjPronouns, forms.subjonctifImparfait, parsed.tail),
+    subjonctifPlusQueParfait: compoundPhrase(aux, "subjImperfect", participle, parsed, true),
+    conditionnelPresent: finite(parsed.reflexive ? finitePronouns : simplePronouns, forms.conditionnel, parsed.tail),
+    conditionnelPasse: compoundPhrase(aux, "conditionnel", participle, parsed),
+    imperatifPresent: imperativePhrase(forms, parsed),
+    imperatifPasse: imperativePastPhrase(aux, participle, parsed),
+    infinitifPresent: [phrase],
+    infinitifPasse: [`${parsed.reflexive ? "s'être" : "avoir"} ${participle}${parsed.tail}`.trim()],
+    participePresent: [`en ${forms.participePresent}${parsed.tail}`.trim()],
+    participePasse: [`${participle}${parsed.tail}`.trim()]
+  };
+}
+
+function parseVerbPhrase(phrase) {
+  const text = String(phrase || "").trim();
+  const match = [...VERB_PATTERNS]
+    .sort((a, b) => b.length - a.length)
+    .find(pattern => normalize(text).startsWith(normalize(pattern)));
+  const pattern = match || text.split(/\s+/)[0] || text;
+  const reflexive = /^s'|^se\s/i.test(pattern);
+  let base = pattern.split(/\s+/)[0];
+  let fixedTail = pattern.slice(base.length).trim();
+  if (reflexive) {
+    const reflexiveMatch = pattern.match(/^s'([^\s]+)|^se\s+([^\s]+)/i);
+    base = reflexiveMatch?.[1] || reflexiveMatch?.[2] || base.replace(/^s'/i, "");
+    fixedTail = pattern.slice(reflexiveMatch?.[0].length || 0).trim();
+  }
+  const remaining = text.slice(pattern.length).trim();
+  return {
+    base,
+    reflexive,
+    tail: [fixedTail, remaining].filter(Boolean).join(" ").replace(/\s+/g, " ").trim()
+  };
+}
+
+function verbForms(base) {
+  const key = normalize(base);
+  const irregular = {
+    avoir: {
+      present: ["ai", "as", "a", "avons", "avez", "ont"],
+      imparfait: ["avais", "avais", "avait", "avions", "aviez", "avaient"],
+      passeSimple: ["eus", "eus", "eut", "eûmes", "eûtes", "eurent"],
+      futur: ["aurai", "auras", "aura", "aurons", "aurez", "auront"],
+      conditionnel: ["aurais", "aurais", "aurait", "aurions", "auriez", "auraient"],
+      subjonctifPresent: ["aie", "aies", "ait", "ayons", "ayez", "aient"],
+      subjonctifImparfait: ["eusse", "eusses", "eût", "eussions", "eussiez", "eussent"],
+      imperatif: ["aie", "ayons", "ayez"],
+      participePresent: "ayant",
+      participle: "eu"
+    },
+    etre: {
+      present: ["suis", "es", "est", "sommes", "êtes", "sont"],
+      imparfait: ["étais", "étais", "était", "étions", "étiez", "étaient"],
+      passeSimple: ["fus", "fus", "fut", "fûmes", "fûtes", "furent"],
+      futur: ["serai", "seras", "sera", "serons", "serez", "seront"],
+      conditionnel: ["serais", "serais", "serait", "serions", "seriez", "seraient"],
+      subjonctifPresent: ["sois", "sois", "soit", "soyons", "soyez", "soient"],
+      subjonctifImparfait: ["fusse", "fusses", "fût", "fussions", "fussiez", "fussent"],
+      imperatif: ["sois", "soyons", "soyez"],
+      participePresent: "étant",
+      participle: "été"
+    },
+    faire: {
+      present: ["fais", "fais", "fait", "faisons", "faites", "font"],
+      imparfait: ["faisais", "faisais", "faisait", "faisions", "faisiez", "faisaient"],
+      passeSimple: ["fis", "fis", "fit", "fîmes", "fîtes", "firent"],
+      futur: ["ferai", "feras", "fera", "ferons", "ferez", "feront"],
+      conditionnel: ["ferais", "ferais", "ferait", "ferions", "feriez", "feraient"],
+      subjonctifPresent: ["fasse", "fasses", "fasse", "fassions", "fassiez", "fassent"],
+      subjonctifImparfait: ["fisse", "fisses", "fît", "fissions", "fissiez", "fissent"],
+      participePresent: "faisant",
+      participle: "fait"
+    }
+  };
+  if (key === "être") return irregular.etre;
+  if (irregular[key]) return irregular[key];
+  if (key === "mettre" || key === "remettre") return prefixedMettre(base);
+  if (key === "prendre") return prendreForms(base);
+  if (key === "prevenir" || key === "prévenir") return prevenirForms(base);
+  if (key === "reduire" || key === "réduire") return reduireForms(base);
+  if (key === "interdire") return interdireForms(base);
+  if (key === "accroitre" || key === "accroître") return accroitreForms(base);
+  return regularVerbForms(base);
+}
+
+function regularVerbForms(base) {
+  if (base.endsWith("er")) return erForms(base);
+  if (base.endsWith("ir")) return irForms(base);
+  if (base.endsWith("re")) return reForms(base);
+  return erForms(base);
+}
+
+function erForms(base) {
+  const stem = base.slice(0, -2);
+  const presentStem = spellingStem(stem);
+  const nousStem = gerStem(stem);
+  const simpleStem = spellingStem(stem);
+  const futureStem = base;
+  return {
+    present: [`${presentStem}e`, `${presentStem}es`, `${presentStem}e`, `${nousStem}ons`, `${stem}ez`, `${presentStem}ent`],
+    imparfait: [`${nousStem}ais`, `${nousStem}ais`, `${nousStem}ait`, `${nousStem}ions`, `${nousStem}iez`, `${nousStem}aient`],
+    passeSimple: [`${simpleStem}ai`, `${simpleStem}as`, `${simpleStem}a`, `${simpleStem}âmes`, `${simpleStem}âtes`, `${simpleStem}èrent`],
+    futur: [`${futureStem}ai`, `${futureStem}as`, `${futureStem}a`, `${futureStem}ons`, `${futureStem}ez`, `${futureStem}ont`],
+    conditionnel: [`${futureStem}ais`, `${futureStem}ais`, `${futureStem}ait`, `${futureStem}ions`, `${futureStem}iez`, `${futureStem}aient`],
+    subjonctifPresent: [`${presentStem}e`, `${presentStem}es`, `${presentStem}e`, `${nousStem}ions`, `${nousStem}iez`, `${presentStem}ent`],
+    subjonctifImparfait: [`${simpleStem}asse`, `${simpleStem}asses`, `${simpleStem}ât`, `${simpleStem}assions`, `${simpleStem}assiez`, `${simpleStem}assent`],
+    participePresent: `${nousStem}ant`,
+    participle: `${stem}é`
+  };
+}
+
+function irForms(base) {
+  const stem = base.slice(0, -2);
+  return {
+    present: [`${stem}is`, `${stem}is`, `${stem}it`, `${stem}issons`, `${stem}issez`, `${stem}issent`],
+    imparfait: [`${stem}issais`, `${stem}issais`, `${stem}issait`, `${stem}issions`, `${stem}issiez`, `${stem}issaient`],
+    passeSimple: [`${stem}is`, `${stem}is`, `${stem}it`, `${stem}îmes`, `${stem}îtes`, `${stem}irent`],
+    futur: [`${base}ai`, `${base}as`, `${base}a`, `${base}ons`, `${base}ez`, `${base}ont`],
+    conditionnel: [`${base}ais`, `${base}ais`, `${base}ait`, `${base}ions`, `${base}iez`, `${base}aient`],
+    subjonctifPresent: [`${stem}isse`, `${stem}isses`, `${stem}isse`, `${stem}issions`, `${stem}issiez`, `${stem}issent`],
+    subjonctifImparfait: [`${stem}isse`, `${stem}isses`, `${stem}ît`, `${stem}issions`, `${stem}issiez`, `${stem}issent`],
+    participePresent: `${stem}issant`,
+    participle: `${stem}i`
+  };
+}
+
+function reForms(base) {
+  const stem = base.slice(0, -2);
+  const futureStem = base.slice(0, -1);
+  return {
+    present: [`${stem}s`, `${stem}s`, stem, `${stem}ons`, `${stem}ez`, `${stem}ent`],
+    imparfait: [`${stem}ais`, `${stem}ais`, `${stem}ait`, `${stem}ions`, `${stem}iez`, `${stem}aient`],
+    passeSimple: [`${stem}is`, `${stem}is`, `${stem}it`, `${stem}îmes`, `${stem}îtes`, `${stem}irent`],
+    futur: [`${futureStem}ai`, `${futureStem}as`, `${futureStem}a`, `${futureStem}ons`, `${futureStem}ez`, `${futureStem}ont`],
+    conditionnel: [`${futureStem}ais`, `${futureStem}ais`, `${futureStem}ait`, `${futureStem}ions`, `${futureStem}iez`, `${futureStem}aient`],
+    subjonctifPresent: [`${stem}e`, `${stem}es`, `${stem}e`, `${stem}ions`, `${stem}iez`, `${stem}ent`],
+    subjonctifImparfait: [`${stem}isse`, `${stem}isses`, `${stem}ît`, `${stem}issions`, `${stem}issiez`, `${stem}issent`],
+    participePresent: `${stem}ant`,
+    participle: `${stem}u`
+  };
+}
+
+function spellingStem(stem) {
+  if (stem.endsWith("ég")) return `${stem.slice(0, -2)}èg`;
+  if (stem.endsWith("é")) return stem;
+  if (stem.endsWith("é")) return stem;
+  if (stem.endsWith("ev")) return stem;
+  if (stem.endsWith("ger")) return stem;
+  return stem;
+}
+
+function gerStem(stem) {
+  return stem.endsWith("g") ? `${stem}e` : stem;
+}
+
+function prefixedMettre(base) {
+  const prefix = base.slice(0, -6);
+  return {
+    present: [`${prefix}mets`, `${prefix}mets`, `${prefix}met`, `${prefix}mettons`, `${prefix}mettez`, `${prefix}mettent`],
+    imparfait: [`${prefix}mettais`, `${prefix}mettais`, `${prefix}mettait`, `${prefix}mettions`, `${prefix}mettiez`, `${prefix}mettaient`],
+    passeSimple: [`${prefix}mis`, `${prefix}mis`, `${prefix}mit`, `${prefix}mîmes`, `${prefix}mîtes`, `${prefix}mirent`],
+    futur: [`${prefix}mettrai`, `${prefix}mettras`, `${prefix}mettra`, `${prefix}mettrons`, `${prefix}mettrez`, `${prefix}mettront`],
+    conditionnel: [`${prefix}mettrais`, `${prefix}mettrais`, `${prefix}mettrait`, `${prefix}mettrions`, `${prefix}mettriez`, `${prefix}mettraient`],
+    subjonctifPresent: [`${prefix}mette`, `${prefix}mettes`, `${prefix}mette`, `${prefix}mettions`, `${prefix}mettiez`, `${prefix}mettent`],
+    subjonctifImparfait: [`${prefix}misse`, `${prefix}misses`, `${prefix}mît`, `${prefix}missions`, `${prefix}missiez`, `${prefix}missent`],
+    participePresent: `${prefix}mettant`,
+    participle: `${prefix}mis`
+  };
+}
+
+function prendreForms(base) {
+  return {
+    present: ["prends", "prends", "prend", "prenons", "prenez", "prennent"],
+    imparfait: ["prenais", "prenais", "prenait", "prenions", "preniez", "prenaient"],
+    passeSimple: ["pris", "pris", "prit", "prîmes", "prîtes", "prirent"],
+    futur: ["prendrai", "prendras", "prendra", "prendrons", "prendrez", "prendront"],
+    conditionnel: ["prendrais", "prendrais", "prendrait", "prendrions", "prendriez", "prendraient"],
+    subjonctifPresent: ["prenne", "prennes", "prenne", "prenions", "preniez", "prennent"],
+    subjonctifImparfait: ["prisse", "prisses", "prît", "prissions", "prissiez", "prissent"],
+    participePresent: "prenant",
+    participle: "pris"
+  };
+}
+
+function prevenirForms(base) {
+  return {
+    present: ["préviens", "préviens", "prévient", "prévenons", "prévenez", "préviennent"],
+    imparfait: ["prévenais", "prévenais", "prévenait", "prévenions", "préveniez", "prévenaient"],
+    passeSimple: ["prévins", "prévins", "prévint", "prévînmes", "prévîntes", "prévinrent"],
+    futur: ["préviendrai", "préviendras", "préviendra", "préviendrons", "préviendrez", "préviendront"],
+    conditionnel: ["préviendrais", "préviendrais", "préviendrait", "préviendrions", "préviendriez", "préviendraient"],
+    subjonctifPresent: ["prévienne", "préviennes", "prévienne", "prévenions", "préveniez", "préviennent"],
+    subjonctifImparfait: ["prévinsse", "prévinsses", "prévînt", "prévinssions", "prévinssiez", "prévinssent"],
+    participePresent: "prévenant",
+    participle: "prévenu"
+  };
+}
+
+function reduireForms(base) {
+  return {
+    present: ["réduis", "réduis", "réduit", "réduisons", "réduisez", "réduisent"],
+    imparfait: ["réduisais", "réduisais", "réduisait", "réduisions", "réduisiez", "réduisaient"],
+    passeSimple: ["réduisis", "réduisis", "réduisit", "réduisîmes", "réduisîtes", "réduisirent"],
+    futur: ["réduirai", "réduiras", "réduira", "réduirons", "réduirez", "réduiront"],
+    conditionnel: ["réduirais", "réduirais", "réduirait", "réduirions", "réduiriez", "réduiraient"],
+    subjonctifPresent: ["réduise", "réduises", "réduise", "réduisions", "réduisiez", "réduisent"],
+    subjonctifImparfait: ["réduisisse", "réduisisses", "réduisît", "réduisissions", "réduisissiez", "réduisissent"],
+    participePresent: "réduisant",
+    participle: "réduit"
+  };
+}
+
+function interdireForms(base) {
+  return {
+    present: ["interdis", "interdis", "interdit", "interdisons", "interdisez", "interdisent"],
+    imparfait: ["interdisais", "interdisais", "interdisait", "interdisions", "interdisiez", "interdisaient"],
+    passeSimple: ["interdis", "interdis", "interdit", "interdîmes", "interdîtes", "interdirent"],
+    futur: ["interdirai", "interdiras", "interdira", "interdirons", "interdirez", "interdiront"],
+    conditionnel: ["interdirais", "interdirais", "interdirait", "interdirions", "interdiriez", "interdiraient"],
+    subjonctifPresent: ["interdise", "interdises", "interdise", "interdisions", "interdisiez", "interdisent"],
+    subjonctifImparfait: ["interdisse", "interdisses", "interdît", "interdissions", "interdissiez", "interdissent"],
+    participePresent: "interdisant",
+    participle: "interdit"
+  };
+}
+
+function accroitreForms(base) {
+  return {
+    present: ["accrois", "accrois", "accroît", "accroissons", "accroissez", "accroissent"],
+    imparfait: ["accroissais", "accroissais", "accroissait", "accroissions", "accroissiez", "accroissaient"],
+    passeSimple: ["accrus", "accrus", "accrut", "accrûmes", "accrûtes", "accrurent"],
+    futur: ["accroîtrai", "accroîtras", "accroîtra", "accroîtrons", "accroîtrez", "accroîtront"],
+    conditionnel: ["accroîtrais", "accroîtrais", "accroîtrait", "accroîtrions", "accroîtriez", "accroîtraient"],
+    subjonctifPresent: ["accroisse", "accroisses", "accroisse", "accroissions", "accroissiez", "accroissent"],
+    subjonctifImparfait: ["accrusse", "accrusses", "accrût", "accrussions", "accrussiez", "accrussent"],
+    participePresent: "accroissant",
+    participle: "accru"
+  };
+}
+
+function finite(pronouns, forms, tail) {
+  return forms.map((form, index) => `${joinPronoun(pronouns[index], form)}${tail ? ` ${tail}` : ""}`);
+}
+
+function compoundPhrase(aux, tense, participle, parsed, subj = false) {
+  const forms = auxiliaryForms(aux, tense);
+  const pronouns = subj
+    ? (parsed.reflexive ? ["que je me", "que tu te", "qu'il/elle se", "que nous nous", "que vous vous", "qu'ils/elles se"] : ["que j'", "que tu", "qu'il/elle", "que nous", "que vous", "qu'ils/elles"])
+    : (parsed.reflexive ? ["je me", "tu te", "il/elle se", "nous nous", "vous vous", "ils/elles se"] : ["j'", "tu", "il/elle", "nous", "vous", "ils/elles"]);
+  return forms.map((form, index) => `${pronouns[index]} ${form} ${participle}${parsed.tail ? ` ${parsed.tail}` : ""}`.replace(/\s+/g, " ").replace("' ", "'"));
+}
+
+function imperativePhrase(forms, parsed) {
+  const tail = parsed.tail ? ` ${parsed.tail}` : "";
+  const present = forms.imperatif || forms.present;
+  const tuForm = forms.imperatif ? present[0] : dropImperativeS(present[1], parsed.base);
+  const nousForm = forms.imperatif ? present[1] : present[3];
+  const vousForm = forms.imperatif ? present[2] : present[4];
+  if (parsed.reflexive) return [`${tuForm}-toi${tail}`, `${nousForm}-nous${tail}`, `${vousForm}-vous${tail}`];
+  return [`${tuForm}${tail}`, `${nousForm}${tail}`, `${vousForm}${tail}`];
+}
+
+function dropImperativeS(form, base) {
+  return base.endsWith("er") && form.endsWith("es") ? form.slice(0, -1) : form;
+}
+
+function imperativePastPhrase(aux, participle, parsed) {
+  const tail = parsed.tail ? ` ${parsed.tail}` : "";
+  if (parsed.reflexive) return [`sois-toi ${participle}${tail}`, `soyons-nous ${participle}${tail}`, `soyez-vous ${participle}${tail}`];
+  return aux === "etre"
+    ? [`sois ${participle}${tail}`, `soyons ${participle}${tail}`, `soyez ${participle}${tail}`]
+    : [`aie ${participle}${tail}`, `ayons ${participle}${tail}`, `ayez ${participle}${tail}`];
+}
+
 function setupCategories() {
   const foundCategories = [...new Set(words.map(word => word.category))];
   const preferredOrder = window.B2_CATEGORY_ORDER || [];
@@ -508,7 +813,8 @@ function renderList(items) {
 
 function renderConjugation(word) {
   if (!word.verb) return "";
-  const forms = conjugateVerb(word.verb);
+  const phrase = word.conjugationPhrase || word.verb;
+  const forms = conjugateVerb(phrase);
   const rows = [
     ["直陈式现在时 · Indicatif présent", forms.indicatifPresent],
     ["直陈式复合过去时 · Indicatif passé composé", forms.indicatifPasseCompose],
@@ -534,7 +840,7 @@ function renderConjugation(word) {
   return `
     <section class="detail-section">
       <h3>动词变位 · Conjugaison</h3>
-      <p class="muted">识别动词：${word.verb}。规则生成适合 B2 复习；个别强不规则动词建议再对照权威变位表。</p>
+      <p class="muted">识别动词：${word.verb}；变位短语：${phrase}。常见规则动词、拼写变化动词和本词库核心不规则动词已校正。</p>
       <div class="conjugation">
         ${rows.map(([tense, formsForTense]) => `
           <div>
