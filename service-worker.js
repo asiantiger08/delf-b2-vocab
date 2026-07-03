@@ -1,12 +1,12 @@
-const CACHE = "delf-b2-vocab-v8";
+const CACHE = "delf-b2-vocab-v9";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./data/vocab.js",
-  "./data/vocab-3000.js",
-  "./manifest.webmanifest",
+  "./styles.css?v=9",
+  "./app.js?v=9",
+  "./data/vocab.js?v=9",
+  "./data/vocab-3000.js?v=9",
+  "./manifest.webmanifest?v=9",
   "./icon.svg"
 ];
 
@@ -25,5 +25,14 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
+  if (event.request.method !== "GET") return;
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
+  );
 });
