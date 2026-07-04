@@ -1,4 +1,6 @@
 const DEFAULT_KEY_HEADER = "Authorization";
+const DEFAULT_ENDPOINT = "https://api.frdic.com/api/open/v1/studylist/word";
+const DEFAULT_LANGUAGE = "fr";
 
 export default async function handler(request, response) {
   response.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
@@ -15,10 +17,11 @@ export default async function handler(request, response) {
     return;
   }
 
-  const endpoint = process.env.FRDIC_API_URL;
+  const endpoint = process.env.FRDIC_API_URL || DEFAULT_ENDPOINT;
   const apiKey = process.env.FRDIC_API_KEY;
   const keyHeader = process.env.FRDIC_API_KEY_HEADER || DEFAULT_KEY_HEADER;
-  const keyPrefix = process.env.FRDIC_API_KEY_PREFIX || "Bearer";
+  const keyPrefix = process.env.FRDIC_API_KEY_PREFIX || "";
+  const language = process.env.FRDIC_API_LANGUAGE || DEFAULT_LANGUAGE;
   const word = String(request.query.word || "").trim();
 
   if (!word) {
@@ -29,20 +32,22 @@ export default async function handler(request, response) {
   if (!endpoint || !apiKey) {
     response.status(501).json({
       error: "Dictionary proxy is not configured",
-      requiredEnv: ["FRDIC_API_URL", "FRDIC_API_KEY"],
+      requiredEnv: ["FRDIC_API_KEY"],
+      optionalEnv: ["FRDIC_API_URL", "FRDIC_API_LANGUAGE"],
       word
     });
     return;
   }
 
   const url = new URL(endpoint);
-  url.searchParams.set(process.env.FRDIC_API_QUERY_PARAM || "q", word);
+  url.searchParams.set(process.env.FRDIC_API_QUERY_PARAM || "word", word);
+  url.searchParams.set(process.env.FRDIC_API_LANGUAGE_PARAM || "language", language);
   if (request.query.source) url.searchParams.set("source", String(request.query.source));
 
   const headers = {
     Accept: "application/json"
   };
-  headers[keyHeader] = keyPrefix ? `${keyPrefix} ${apiKey}` : apiKey;
+  headers[keyHeader] = authorizationValue(apiKey, keyPrefix);
 
   try {
     const upstream = await fetch(url, { headers });
@@ -68,15 +73,21 @@ export default async function handler(request, response) {
 function normalizeDictionaryPayload(payload) {
   const data = payload.data || payload.result || payload.entry || payload;
   return {
-    word: data.word || data.query || data.fr || "",
-    definitions: firstDefined(data.definitions, data.definition, data.explains, data.translation, data.translations, data.basic?.explains),
+    word: data.word || data.query || data.fr || payload.word || "",
+    definitions: firstDefined(data.definitions, data.definition, data.explains, data.exp, data.translation, data.translations, data.basic?.explains),
     synonyms: firstDefined(data.synonyms, data.synonymes, data.syno, data.synonym),
     antonyms: firstDefined(data.antonyms, data.antonymes, data.anto, data.antonym),
-    associations: firstDefined(data.associations, data.related, data.collocations, data.phrases),
-    examples: firstDefined(data.examples, data.sentences, data.exampleSentences),
+    associations: firstDefined(data.associations, data.related, data.collocations, data.phrases, data.contexts),
+    examples: firstDefined(data.examples, data.sentences, data.exampleSentences, data.contexts),
     conjugation: data.conjugation || data.conjugations || data.forms || null,
     html: typeof data.html === "string" ? data.html : ""
   };
+}
+
+function authorizationValue(apiKey, keyPrefix) {
+  const trimmed = String(apiKey || "").trim();
+  if (!keyPrefix || /^NIS\s+/i.test(trimmed) || /^Bearer\s+/i.test(trimmed)) return trimmed;
+  return `${keyPrefix} ${trimmed}`;
 }
 
 function firstDefined(...values) {
