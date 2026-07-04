@@ -295,6 +295,501 @@ const LEXICAL_RELATIONS = {
   }
 };
 
+const RELATION_PATTERNS = [
+  {
+    terms: ["mettre en evidence", "souligner", "constater", "affirmer", "nuancer", "contester", "argument", "these"],
+    synonyms: ["montrer", "faire ressortir", "insister sur", "signaler", "démontrer", "relever", "mettre en lumière"],
+    antonyms: ["dissimuler", "minimiser", "passer sous silence", "nier", "ignorer", "effacer", "éluder"],
+    associations: ["argument", "preuve", "exemple", "constat", "idée principale", "démonstration", "débat"]
+  },
+  {
+    terms: ["remettre en question", "questionner", "douter", "critique"],
+    synonyms: ["questionner", "contester", "réexaminer", "mettre en doute", "interroger", "critiquer", "reconsidérer"],
+    antonyms: ["accepter", "approuver", "confirmer", "valider", "croire sans réserve", "admettre", "maintenir"],
+    associations: ["doute", "certitude", "preuve", "débat", "remise en cause", "esprit critique", "objection"]
+  },
+  {
+    terms: ["en revanche", "toutefois", "neanmoins", "bien que", "pourtant", "cependant"],
+    synonyms: ["cependant", "pourtant", "néanmoins", "mais", "à l'inverse", "en contrepartie", "malgré cela"],
+    antonyms: ["de même", "également", "dans le même sens", "parallèlement", "ainsi", "en continuité", "sans opposition"],
+    associations: ["opposition", "concession", "contraste", "nuance", "argument", "réserve", "transition"]
+  },
+  {
+    terms: ["par consequent", "donc", "ainsi", "aboutir a", "entrainer", "susciter"],
+    synonyms: ["donc", "ainsi", "de ce fait", "il en résulte que", "provoquer", "causer", "produire"],
+    antonyms: ["sans conséquence", "indépendamment", "malgré cela", "sans effet", "sans lien", "par hasard", "en amont"],
+    associations: ["cause", "effet", "résultat", "conséquence", "enchaînement", "impact", "raisonnement"]
+  },
+  {
+    terms: ["a cause de", "grace a", "faute de", "afin de", "a condition que", "selon", "d'apres", "en effet", "quant a", "voire", "d'ailleurs"],
+    synonyms: ["en raison de", "du fait de", "dans le but de", "à partir de", "d'après", "effectivement", "en outre"],
+    antonyms: ["sans raison", "malgré", "indépendamment de", "contre toute attente", "sans objectif", "hors de propos", "sans source"],
+    associations: ["cause", "but", "condition", "source", "précision", "référence", "enchaînement logique"]
+  },
+  {
+    terms: ["prendre en compte", "avoir recours", "faire face", "etre confronte", "mettre en place", "encadrer", "interdire", "autoriser", "inciter"],
+    synonyms: ["considérer", "utiliser", "affronter", "instaurer", "réglementer", "permettre", "encourager"],
+    antonyms: ["négliger", "éviter", "subir passivement", "supprimer", "laisser sans règle", "interdire", "décourager"],
+    associations: ["mesure", "solution", "problème", "règle", "politique publique", "action", "responsabilité"]
+  },
+  {
+    terms: ["sensibiliser", "lutter contre", "s'adapter", "s'engager", "s'integrer", "s'informer", "s'epanouir"],
+    synonyms: ["informer", "mobiliser", "combattre", "s'ajuster", "participer", "s'insérer", "se réaliser"],
+    antonyms: ["ignorer", "renoncer", "subir", "rester passif", "s'exclure", "se désintéresser", "se replier"],
+    associations: ["campagne", "engagement", "adaptation", "participation", "intégration", "information", "bien-être"]
+  },
+  {
+    terms: ["demarche", "constat"],
+    synonyms: ["avantage", "force", "ressource", "obstacle", "limite", "procédure", "observation"],
+    antonyms: ["faiblesse", "handicap", "désavantage", "liberté totale", "absence de limite", "improvisation", "déni"],
+    associations: ["argument", "situation", "choix", "décision", "analyse", "objectif", "solution"]
+  },
+  {
+    terms: ["atout"],
+    synonyms: ["avantage", "force", "ressource", "qualité", "point fort", "bénéfice", "levier"],
+    antonyms: ["faiblesse", "handicap", "désavantage", "limite", "point faible", "obstacle", "inconvénient"],
+    associations: ["compétence", "opportunité", "argument", "profil", "réussite", "valeur ajoutée", "stratégie"]
+  },
+  {
+    terms: ["contrainte"],
+    synonyms: ["obligation", "restriction", "limite", "pression", "exigence", "condition imposée", "entrave"],
+    antonyms: ["liberté", "souplesse", "possibilité", "choix", "autonomie", "marge de manœuvre", "facilité"],
+    associations: ["règle", "cadre", "délai", "budget", "pression", "adaptation", "négociation"]
+  },
+  {
+    terms: ["gaspiller", "gaspillage"],
+    synonyms: ["dilapider", "perdre inutilement", "consommer sans mesure", "jeter", "surexploiter", "dépenser à tort", "mal utiliser"],
+    antonyms: ["économiser", "préserver", "réutiliser", "recycler", "optimiser", "ménager", "valoriser"],
+    associations: ["déchets", "surconsommation", "ressources", "nourriture", "énergie", "eau", "sobriété"]
+  },
+  {
+    terms: ["trier", "tri selectif"],
+    synonyms: ["classer", "séparer", "sélectionner", "répartir", "organiser", "mettre de côté", "distinguer"],
+    antonyms: ["mélanger", "confondre", "jeter ensemble", "désorganiser", "négliger le tri", "polluer", "éparpiller"],
+    associations: ["bac jaune", "déchets", "recyclage", "emballages", "verre", "papier", "collecte"]
+  },
+  {
+    terms: ["bien-etre", "bien etre"],
+    synonyms: ["épanouissement", "équilibre", "confort", "santé globale", "qualité de vie", "sérénité", "mieux-être"],
+    antonyms: ["mal-être", "souffrance", "stress", "inconfort", "épuisement", "angoisse", "déséquilibre"],
+    associations: ["santé mentale", "sommeil", "activité physique", "repos", "relations sociales", "prévention", "hygiène de vie"]
+  },
+  {
+    terms: ["vivre-ensemble", "vivre ensemble"],
+    synonyms: ["cohabitation harmonieuse", "cohésion sociale", "convivialité", "respect mutuel", "vie commune", "lien social", "solidarité"],
+    antonyms: ["division", "exclusion", "communautarisme fermé", "isolement", "conflit social", "intolérance", "fragmentation"],
+    associations: ["quartier", "citoyenneté", "respect", "tolérance", "mixité", "solidarité", "règles communes"]
+  },
+  {
+    terms: ["comportement", "habitude"],
+    synonyms: ["conduite", "attitude", "pratique", "réflexe", "usage", "routine", "manière d'agir"],
+    antonyms: ["exception", "rupture", "changement soudain", "inconstance", "improvisation", "abandon d'usage", "contre-habitude"],
+    associations: ["routine", "choix", "prévention", "mode de vie", "consommation", "éducation", "santé"]
+  },
+  {
+    terms: ["deserts medicaux", "desert medical", "penurie de medecins"],
+    synonyms: ["zone sous-dotée", "manque de médecins", "territoire sans soins", "déficit médical", "inégalité d'accès aux soins", "pénurie médicale", "isolement sanitaire"],
+    antonyms: ["offre de soins abondante", "accès facile aux soins", "maillage médical", "proximité médicale", "présence de spécialistes", "service accessible", "couverture sanitaire"],
+    associations: ["médecin généraliste", "rendez-vous", "ruralité", "hôpital", "télémédecine", "patient", "urgence"]
+  },
+  {
+    terms: ["condition de travail", "vie active"],
+    synonyms: ["stabilité professionnelle", "cohésion d'équipe", "autonomie", "organisation", "phase d'évaluation", "fin de carrière", "pension"],
+    antonyms: ["instabilité professionnelle", "individualisme", "passivité", "désorganisation", "embauche définitive", "activité professionnelle", "entrée dans la vie active"],
+    associations: ["contrat", "collègues", "responsabilité", "planning", "employeur", "salarié", "cotisations"]
+  },
+  {
+    terms: ["securite de l'emploi"],
+    synonyms: ["stabilité de l'emploi", "emploi protégé", "poste stable", "garantie professionnelle", "sécurité professionnelle", "emploi durable", "protection du poste"],
+    antonyms: ["précarité", "instabilité", "licenciement", "contrat court", "insécurité professionnelle", "chômage", "emploi fragile"],
+    associations: ["CDI", "contrat", "ancienneté", "licenciement", "salarié", "revenu stable", "protection sociale"]
+  },
+  {
+    terms: ["esprit d'equipe"],
+    synonyms: ["solidarité collective", "coopération", "cohésion", "entraide", "collaboration", "sens du collectif", "travail en équipe"],
+    antonyms: ["individualisme", "rivalité", "isolement", "conflit", "désunion", "chacun pour soi", "compétition interne"],
+    associations: ["collègues", "projet", "communication", "confiance", "groupe", "objectif commun", "management"]
+  },
+  {
+    terms: ["prise d'initiative"],
+    synonyms: ["initiative personnelle", "autonomie", "proactivité", "capacité d'agir", "responsabilité", "élan personnel", "force de proposition"],
+    antonyms: ["passivité", "attentisme", "obéissance passive", "dépendance", "absence d'initiative", "inaction", "conformisme"],
+    associations: ["responsabilité", "créativité", "décision", "risque", "projet", "autonomie", "leadership"]
+  },
+  {
+    terms: ["gestion du temps"],
+    synonyms: ["organisation du temps", "planification", "priorisation", "emploi du temps maîtrisé", "répartition des tâches", "discipline horaire", "productivité"],
+    antonyms: ["désorganisation", "retard", "procrastination", "improvisation", "perte de temps", "dispersion", "surcharge"],
+    associations: ["agenda", "priorités", "délai", "planning", "efficacité", "pause", "rythme de travail"]
+  },
+  {
+    terms: ["periode d'essai"],
+    synonyms: ["phase d'essai", "période probatoire", "temps d'évaluation", "début de contrat", "phase d'adaptation", "test professionnel", "essai contractuel"],
+    antonyms: ["embauche confirmée", "contrat définitif", "titularisation", "poste confirmé", "fin d'essai", "stabilité", "ancienneté"],
+    associations: ["contrat", "employeur", "salarié", "rupture", "évaluation", "adaptation", "embauche"]
+  },
+  {
+    terms: ["retraite"],
+    synonyms: ["fin de carrière", "pension", "cessation d'activité", "vie après le travail", "départ à la retraite", "inactivité professionnelle", "pension de retraite"],
+    antonyms: ["activité professionnelle", "emploi", "entrée dans la vie active", "début de carrière", "travail salarié", "embauche", "vie active"],
+    associations: ["cotisations", "âge légal", "pension", "carrière", "réforme", "senior", "système social"]
+  },
+  {
+    terms: ["risque environnemental", "ressource fragile"],
+    synonyms: ["élévation du niveau marin", "destruction des forêts", "sobriété hydrique", "préservation de l'eau", "érosion côtière", "coupe forestière", "réduction de consommation d'eau"],
+    antonyms: ["stabilité du niveau marin", "reforestation", "gaspillage d'eau", "protection des forêts", "reboisement", "abondance hydrique", "surexploitation de l'eau"],
+    associations: ["climat", "littoral", "forêt", "bassin versant", "sécheresse", "biodiversité", "ressource en eau"]
+  },
+  {
+    terms: ["montee des eaux"],
+    synonyms: ["élévation du niveau marin", "hausse du niveau de la mer", "submersion", "érosion côtière", "inondation littorale", "recul du trait de côte", "risque côtier"],
+    antonyms: ["stabilité du niveau marin", "recul des eaux", "protection du littoral", "sécurité côtière", "assèchement", "baisse du niveau", "absence de submersion"],
+    associations: ["littoral", "îles", "inondation", "climat", "glaciers", "océan", "adaptation"]
+  },
+  {
+    terms: ["deforestation"],
+    synonyms: ["destruction des forêts", "coupe forestière", "déboisement", "perte de couvert forestier", "exploitation forestière excessive", "rasage des forêts", "recul forestier"],
+    antonyms: ["reforestation", "boisement", "protection des forêts", "préservation forestière", "gestion durable", "reboisement", "forêt protégée"],
+    associations: ["Amazonie", "arbres", "biodiversité", "sols", "carbone", "habitat", "agriculture intensive"]
+  },
+  {
+    terms: ["economie d'eau"],
+    synonyms: ["sobriété hydrique", "réduction de consommation d'eau", "préservation de l'eau", "usage raisonné de l'eau", "gestion économe", "anti-gaspillage d'eau", "maîtrise de la consommation"],
+    antonyms: ["gaspillage d'eau", "surconsommation d'eau", "surexploitation", "fuite d'eau", "usage excessif", "dilapidation", "négligence"],
+    associations: ["sécheresse", "robinet", "arrosage", "ressource en eau", "facture", "réutilisation", "sobriété"]
+  },
+  {
+    terms: ["relation enseignant-eleve", "relation enseignant eleve"],
+    synonyms: ["lien pédagogique", "rapport professeur-élève", "interaction éducative", "accompagnement", "relation de confiance", "suivi scolaire", "dialogue pédagogique"],
+    antonyms: ["distance pédagogique", "conflit", "absence de dialogue", "méfiance", "rupture éducative", "indifférence", "autoritarisme"],
+    associations: ["classe", "écoute", "feedback", "motivation", "respect", "apprentissage", "autorité"]
+  },
+  {
+    terms: ["racisme"],
+    synonyms: ["discrimination raciale", "xénophobie", "préjugé racial", "haine raciale", "stigmatisation", "intolérance", "ségrégation"],
+    antonyms: ["antiracisme", "égalité", "tolérance", "respect", "inclusion", "diversité", "non-discrimination"],
+    associations: ["origine", "couleur de peau", "plainte", "droits humains", "égalité", "préjugé", "justice"]
+  },
+  {
+    terms: ["diplomatie"],
+    synonyms: ["relations diplomatiques", "négociation internationale", "dialogue entre États", "médiation", "politique étrangère", "concertation", "coopération officielle"],
+    antonyms: ["rupture diplomatique", "conflit armé", "isolement", "hostilité", "ultimatum", "guerre", "absence de dialogue"],
+    associations: ["ambassade", "traité", "négociation", "ONU", "accord", "frontières", "chef d'État"]
+  },
+  {
+    terms: ["durable", "transition ecologique", "developpement durable", "responsabilite environnementale", "economie circulaire", "gaspillage", "gaspiller", "trier"],
+    synonyms: ["soutenable", "responsable", "écologique", "pérenne", "sobre", "réutiliser", "valoriser"],
+    antonyms: ["jetable", "polluant", "irresponsable", "éphémère", "gaspilleur", "épuisement", "surexploitation"],
+    associations: ["ressources", "recyclage", "tri", "cycle de vie", "empreinte carbone", "économie circulaire", "long terme"]
+  },
+  {
+    terms: ["innovation", "progres technique", "mise a jour", "realite virtuelle", "realite augmentee", "paiement sans contact", "tracabilite", "biais algorithmique"],
+    synonyms: ["nouveauté", "invention", "avancée technique", "modernisation", "amélioration technologique", "dispositif innovant", "solution nouvelle"],
+    antonyms: ["routine", "immobilisme", "retard technique", "obsolescence", "archaïsme", "panne", "régression"],
+    associations: ["recherche", "prototype", "algorithme", "données", "interface", "mise à jour", "utilisateur"]
+  },
+  {
+    terms: ["telemedecine", "telesante", "mutuelle", "dossier medical", "douleur chronique", "vieillissement", "penurie de medecins", "fatigue"],
+    synonyms: ["consultation à distance", "suivi médical", "assurance complémentaire", "dossier patient", "maladie chronique", "âge avancé", "manque de médecins"],
+    antonyms: ["consultation en présence", "absence de suivi", "bonne santé", "jeunesse", "abondance médicale", "forme", "récupération"],
+    associations: ["patient", "médecin", "ordonnance", "remboursement", "diagnostic", "traitement", "désert médical"]
+  },
+  {
+    terms: ["reforme pedagogique", "examen final", "memorisation", "prise de parole", "frais d'inscription", "selection a l'universite", "relation enseignant eleve", "discipline", "curiosite intellectuelle", "confiance en soi"],
+    synonyms: ["changement éducatif", "épreuve finale", "apprentissage par cœur", "expression orale", "coût des études", "admission sélective", "lien pédagogique", "rigueur", "envie d'apprendre"],
+    antonyms: ["immobilisme scolaire", "contrôle continu", "oubli", "silence", "gratuité", "accès ouvert", "distance pédagogique", "indiscipline", "désintérêt"],
+    associations: ["classe", "professeur", "étudiant", "université", "oral", "règle", "motivation"]
+  },
+  {
+    terms: ["traitement de l'information", "verification des faits", "couverture mediatique", "debat public", "polarisation", "temps d'ecran", "attention du public", "titre accrocheur", "sensationnalisme", "publicite ciblee", "influenceur", "recommandation automatique", "moderation des contenus", "moderation", "bulle de filtres", "viralite"],
+    synonyms: ["analyse de l'information", "fact-checking", "médiatisation", "discussion collective", "division de l'opinion", "exposition aux écrans", "audience", "titre attractif", "dramatisation", "ciblage publicitaire"],
+    antonyms: ["désintérêt médiatique", "information non vérifiée", "silence médiatique", "consensus", "déconnexion", "discrétion", "sobriété éditoriale", "publicité non ciblée", "pluralisme", "modération absente"],
+    associations: ["article", "réseau social", "algorithme", "audience", "source", "journaliste", "opinion"]
+  },
+  {
+    terms: ["vivre ensemble", "participation citoyenne", "segregation urbaine", "solitude", "dignite humaine", "racisme", "manifestation", "manifester"],
+    synonyms: ["cohabitation sociale", "engagement civique", "séparation urbaine", "isolement", "respect de la personne", "discrimination raciale", "mobilisation"],
+    antonyms: ["fragmentation sociale", "passivité citoyenne", "mixité urbaine", "lien social", "humiliation", "antiracisme", "calme social"],
+    associations: ["quartier", "citoyen", "égalité", "droits humains", "association", "manifestants", "justice"]
+  },
+  {
+    terms: ["chaine d'approvisionnement", "ouverture economique", "fermeture des frontieres", "diplomatie", "conflit commercial", "taxe douaniere", "relocalisation", "specialisation economique"],
+    synonyms: ["supply chain", "libéralisation", "contrôle des frontières", "relations internationales", "guerre commerciale", "droits de douane", "retour de production", "avantage comparatif"],
+    antonyms: ["rupture logistique", "protectionnisme", "ouverture des frontières", "isolement diplomatique", "accord commercial", "libre-échange", "délocalisation", "diversification économique"],
+    associations: ["importation", "exportation", "frontière", "accord", "entreprise", "production", "marché mondial"]
+  },
+  {
+    terms: ["fracture numerique", "exclusion numerique", "dependance numerique", "obsolescence programmee"],
+    synonyms: ["exclusion numérique", "inégalité d'accès", "dépendance aux écrans", "risque informatique", "vulnérabilité numérique", "retard technologique", "usure programmée"],
+    antonyms: ["inclusion numérique", "autonomie numérique", "sobriété numérique", "accès équitable", "réparation", "sécurité renforcée", "maîtrise des usages"],
+    associations: ["accès internet", "équipement", "piratage", "mise à jour", "réparation", "écran", "mot de passe"]
+  },
+  {
+    terms: ["mobilite sociale", "ascension sociale", "reproduction sociale"],
+    synonyms: ["ascension sociale", "changement de statut", "promotion sociale", "progression sociale", "trajectoire sociale", "élévation sociale", "circulation sociale"],
+    antonyms: ["immobilité sociale", "reproduction sociale", "déclassement", "blocage social", "assignation sociale", "inégalité héritée", "plafond social"],
+    associations: ["origine sociale", "diplôme", "revenu", "emploi", "mérite", "inégalités", "opportunités"]
+  },
+  {
+    terms: ["pollution", "atmospherique", "sonore", "air", "eau"],
+    synonyms: ["contamination", "nuisance", "dégradation", "rejet", "émission", "salissure", "altération"],
+    antonyms: ["dépollution", "assainissement", "pureté", "propreté", "préservation", "air sain", "milieu intact"],
+    associations: ["particules fines", "gaz toxiques", "qualité de l'air", "eaux usées", "bruit", "santé publique", "émissions"]
+  },
+  {
+    terms: ["recyclage", "recycler", "tri", "dechets", "dechet", "selectif"],
+    synonyms: ["réutilisation", "valorisation", "récupération", "tri", "transformation", "réemploi", "collecte sélective"],
+    antonyms: ["gaspillage", "mise en décharge", "rejet", "incinération", "usage unique", "abandon", "surconsommation"],
+    associations: ["bac de tri", "emballages", "matières premières", "compost", "collecte", "plastique", "papier"]
+  },
+  {
+    terms: ["sobriete", "energetique", "energie", "energies", "renouvelables", "renovation"],
+    synonyms: ["économies d'énergie", "efficacité énergétique", "frugalité", "modération", "réduction de consommation", "transition énergétique", "maîtrise de l'énergie"],
+    antonyms: ["gaspillage énergétique", "surconsommation", "dilapidation", "inefficacité", "excès", "dépendance fossile", "passoire thermique"],
+    associations: ["chauffage", "isolation", "éclairage", "électricité", "panneaux solaires", "éoliennes", "consommation"]
+  },
+  {
+    terms: ["consommation", "responsable", "achat", "menage", "pouvoir", "inflation"],
+    synonyms: ["achat durable", "consommation éthique", "choix raisonné", "sobriété", "commerce équitable", "achat responsable", "consommation consciente"],
+    antonyms: ["surconsommation", "achat impulsif", "gaspillage", "consumérisme", "obsolescence", "dépense excessive", "produit jetable"],
+    associations: ["label", "origine", "prix", "budget", "réparation", "durabilité", "impact environnemental"]
+  },
+  {
+    terms: ["agriculture", "biologique", "bio", "circuits", "courts", "alimentaire", "alimentation"],
+    synonyms: ["agriculture bio", "production biologique", "agroécologie", "culture écologique", "agriculture durable", "culture sans pesticides", "production locale"],
+    antonyms: ["agriculture intensive", "agriculture conventionnelle", "monoculture", "pesticides", "culture industrielle", "engrais chimiques", "production standardisée"],
+    associations: ["sols", "label bio", "producteurs locaux", "saisonnalité", "biodiversité", "ferme", "aliments"]
+  },
+  {
+    terms: ["climat", "climatique", "rechauffement", "canicule", "secheresse", "inondation", "carbone", "empreinte"],
+    synonyms: ["dérèglement climatique", "changement climatique", "réchauffement global", "crise climatique", "émissions de CO2", "impact carbone", "aléa climatique"],
+    antonyms: ["stabilité climatique", "neutralité carbone", "atténuation", "adaptation réussie", "résilience", "captation du carbone", "climat tempéré"],
+    associations: ["gaz à effet de serre", "température", "sécheresse", "inondations", "canicule", "empreinte carbone", "accord de Paris"]
+  },
+  {
+    terms: ["biodiversite", "especes", "nature", "foret", "espaces", "verts", "ressource", "naturelle"],
+    synonyms: ["diversité du vivant", "richesse écologique", "variété des espèces", "patrimoine naturel", "écosystèmes", "faune et flore", "capital naturel"],
+    antonyms: ["appauvrissement du vivant", "extinction", "disparition des espèces", "déforestation", "artificialisation", "monoculture", "érosion de la biodiversité"],
+    associations: ["habitat", "espèce protégée", "écosystème", "forêt", "zones humides", "pollinisateurs", "réserve naturelle"]
+  },
+  {
+    terms: ["mobilite", "transports", "transport", "voiture", "publics", "douce", "circulation"],
+    synonyms: ["déplacement", "transport collectif", "mobilité durable", "trajet", "circulation", "accessibilité", "déplacement quotidien"],
+    antonyms: ["immobilité", "enclavement", "embouteillage", "dépendance automobile", "sédentarité", "isolement", "blocage"],
+    associations: ["vélo", "bus", "train", "covoiturage", "piste cyclable", "trajet domicile-travail", "émissions"]
+  },
+  {
+    terms: ["travail", "emploi", "professionnel", "professionnelle", "carriere", "metier", "marche"],
+    synonyms: ["activité professionnelle", "poste", "métier", "vie professionnelle", "parcours professionnel", "fonction", "occupation"],
+    antonyms: ["chômage", "inactivité", "perte d'emploi", "exclusion professionnelle", "oisiveté", "absence de poste", "retraite"],
+    associations: ["contrat", "salaire", "entreprise", "collègue", "recrutement", "compétences", "conditions de travail"]
+  },
+  {
+    terms: ["teletravail", "distance", "ligne", "plateforme", "application"],
+    synonyms: ["travail à distance", "travail en ligne", "activité à domicile", "téléactivité", "travail hybride", "bureau virtuel", "visioconférence"],
+    antonyms: ["présentiel", "travail sur site", "bureau traditionnel", "déplacement quotidien", "réunion physique", "contact direct", "site de l'entreprise"],
+    associations: ["visioconférence", "connexion", "ordinateur", "autonomie", "isolement", "flexibilité", "horaires"]
+  },
+  {
+    terms: ["precarite", "precaire", "contrat", "independant", "salaire", "salariale", "pouvoir"],
+    synonyms: ["instabilité", "fragilité sociale", "insécurité économique", "vulnérabilité", "emploi instable", "revenu incertain", "situation fragile"],
+    antonyms: ["stabilité", "sécurité de l'emploi", "contrat durable", "protection sociale", "revenu stable", "emploi permanent", "sécurité matérielle"],
+    associations: ["CDD", "temps partiel", "bas salaire", "aides sociales", "loyer", "pouvoir d'achat", "risque social"]
+  },
+  {
+    terms: ["chomage", "recherche", "embauche", "recrutement", "entretien", "essai"],
+    synonyms: ["absence d'emploi", "sans-emploi", "inactivité forcée", "demande d'emploi", "perte de poste", "non-emploi", "sous-emploi"],
+    antonyms: ["emploi", "activité", "embauche", "recrutement", "poste stable", "plein emploi", "insertion professionnelle"],
+    associations: ["CV", "entretien", "offre d'emploi", "formation", "allocation", "marché du travail", "candidature"]
+  },
+  {
+    terms: ["competence", "competences", "formation", "reconversion", "continue", "initiale", "apprentissage"],
+    synonyms: ["savoir-faire", "aptitude", "qualification", "capacité", "expertise", "maîtrise", "habileté"],
+    antonyms: ["incompétence", "lacune", "manque de qualification", "insuffisance", "déqualification", "ignorance", "maladresse"],
+    associations: ["diplôme", "stage", "certification", "expérience", "formation continue", "reconversion", "employabilité"]
+  },
+  {
+    terms: ["burn-out", "epuisement", "stress", "charge", "qualite de vie", "equilibre"],
+    synonyms: ["épuisement professionnel", "surmenage", "fatigue extrême", "surcharge mentale", "usure professionnelle", "pression excessive", "détresse au travail"],
+    antonyms: ["bien-être au travail", "équilibre", "repos", "récupération", "prévention", "sérénité", "charge raisonnable"],
+    associations: ["pression", "horaires", "arrêt maladie", "management", "repos", "santé mentale", "prévention"]
+  },
+  {
+    terms: ["entreprise", "management", "hierarchie", "equipe", "syndicat", "greve", "productivite"],
+    synonyms: ["organisation", "société", "structure", "employeur", "groupe de travail", "direction", "collectif professionnel"],
+    antonyms: ["travail indépendant", "désorganisation", "isolement", "absence de direction", "conflit social", "blocage", "désengagement"],
+    associations: ["salariés", "hiérarchie", "négociation", "syndicat", "grève", "objectifs", "productivité"]
+  },
+  {
+    terms: ["numerique", "technologie", "informatique", "logiciel", "reseau", "internet", "digital"],
+    synonyms: ["technologique", "informatique", "digital", "connecté", "en ligne", "dématérialisé", "virtuel"],
+    antonyms: ["analogique", "papier", "manuel", "hors ligne", "présentiel", "traditionnel", "non connecté"],
+    associations: ["ordinateur", "smartphone", "plateforme", "réseau", "logiciel", "données", "connexion"]
+  },
+  {
+    terms: ["donnees", "personnelles", "privee", "consentement", "collecte", "protection des donnees"],
+    synonyms: ["informations personnelles", "données privées", "traces numériques", "renseignements sensibles", "vie privée", "identité numérique", "confidentialité"],
+    antonyms: ["exposition des données", "fuite de données", "surveillance", "profilage abusif", "intrusion", "divulgation", "piratage"],
+    associations: ["RGPD", "consentement", "confidentialité", "mot de passe", "cookies", "cybersécurité", "plateforme"]
+  },
+  {
+    terms: ["intelligence artificielle", "algorithme", "automatisation", "robotisation", "reconnaissance", "faciale"],
+    synonyms: ["IA", "système automatisé", "modèle prédictif", "apprentissage automatique", "traitement algorithmique", "machine intelligente", "automate"],
+    antonyms: ["décision humaine", "travail manuel", "jugement personnel", "artisanat", "intervention humaine", "improvisation", "non-automatisation"],
+    associations: ["données", "biais", "machine learning", "robot", "reconnaissance faciale", "automatisation", "éthique"]
+  },
+  {
+    terms: ["fracture", "obsolescence", "cybersecurite", "securite informatique"],
+    synonyms: ["faille", "rupture", "vulnérabilité", "risque informatique", "menace numérique", "panne", "insécurité"],
+    antonyms: ["continuité", "sécurité", "protection", "fiabilité", "résilience", "mise à jour", "maintenance"],
+    associations: ["piratage", "mot de passe", "logiciel", "mise à jour", "réparation", "réseau", "données"]
+  },
+  {
+    terms: ["education", "scolaire", "eleves", "enseignement", "classe", "pedagogie"],
+    synonyms: ["enseignement", "instruction", "apprentissage", "scolarité", "formation", "transmission", "éducation scolaire"],
+    antonyms: ["ignorance", "échec scolaire", "décrochage", "déscolarisation", "illettrisme", "absence de formation", "exclusion scolaire"],
+    associations: ["élève", "professeur", "classe", "devoirs", "examen", "programme", "évaluation"]
+  },
+  {
+    terms: ["reussite", "echec", "decrochage", "orientation", "soutien", "devoirs"],
+    synonyms: ["succès scolaire", "progression", "réussite éducative", "accompagnement", "orientation", "persévérance", "soutien pédagogique"],
+    antonyms: ["échec", "abandon scolaire", "décrochage", "retard", "désorientation", "démotivation", "exclusion"],
+    associations: ["notes", "examen", "motivation", "famille", "professeur", "aide aux devoirs", "parcours"]
+  },
+  {
+    terms: ["esprit critique", "critique", "lecture", "culture generale", "expression", "orale", "ecrite"],
+    synonyms: ["jugement critique", "discernement", "analyse", "réflexion personnelle", "argumentation", "prise de recul", "raisonnement"],
+    antonyms: ["crédulité", "conformisme", "naïveté", "passivité", "acceptation aveugle", "absence de recul", "dogmatisme"],
+    associations: ["source", "argument", "preuve", "débat", "lecture", "opinion", "nuance"]
+  },
+  {
+    terms: ["egalite des chances", "inclusion", "autonomie", "motivation", "eleves"],
+    synonyms: ["équité scolaire", "accès équitable", "justice éducative", "inclusion scolaire", "opportunités égales", "soutien individualisé", "émancipation"],
+    antonyms: ["sélection sociale", "inégalité scolaire", "exclusion", "discrimination", "reproduction sociale", "barrière sociale", "découragement"],
+    associations: ["bourse", "handicap", "origine sociale", "orientation", "soutien", "réussite", "parcours"]
+  },
+  {
+    terms: ["sante", "soins", "medecine", "hopital", "urgences", "specialiste", "generaliste"],
+    synonyms: ["état de santé", "bien-être physique", "prise en charge", "système médical", "soins médicaux", "condition physique", "suivi médical"],
+    antonyms: ["maladie", "souffrance", "dégradation de la santé", "absence de soins", "renoncement aux soins", "urgence sanitaire", "mauvaise santé"],
+    associations: ["médecin", "hôpital", "traitement", "prévention", "consultation", "remboursement", "patient"]
+  },
+  {
+    terms: ["prevention", "depistage", "vaccination", "hygiene", "vie"],
+    synonyms: ["mesure préventive", "anticipation", "protection sanitaire", "réduction des risques", "dépistage", "sensibilisation", "vaccination"],
+    antonyms: ["négligence", "exposition au risque", "laisser-faire", "retard de diagnostic", "imprudence", "aggravation", "absence de prévention"],
+    associations: ["campagne", "vaccin", "dépistage", "risque", "médecin", "information", "habitudes"]
+  },
+  {
+    terms: ["mental", "mentale", "anxiete", "depression", "sommeil", "sedentarite", "activite physique"],
+    synonyms: ["bien-être psychologique", "équilibre mental", "santé psychique", "forme physique", "activité régulière", "repos", "stabilité émotionnelle"],
+    antonyms: ["mal-être", "anxiété", "dépression", "sédentarité", "insomnie", "épuisement", "isolement"],
+    associations: ["stress", "sommeil", "sport", "psychologue", "fatigue", "routine", "soutien"]
+  },
+  {
+    terms: ["tabac", "alcool", "sucre", "alimentation", "dependance"],
+    synonyms: ["addiction", "consommation excessive", "habitude nocive", "usage problématique", "excès", "comportement à risque", "dépendance"],
+    antonyms: ["sevrage", "modération", "sobriété", "alimentation équilibrée", "prévention", "maîtrise", "hygiène de vie"],
+    associations: ["risque", "maladie", "habitude", "campagne", "sucre", "alcool", "tabac"]
+  },
+  {
+    terms: ["information", "medias", "presse", "journalisme", "source", "fiable"],
+    synonyms: ["actualité", "renseignement", "nouvelle", "contenu journalistique", "fait vérifié", "reportage", "donnée fiable"],
+    antonyms: ["désinformation", "rumeur", "censure", "propagande", "fake news", "intox", "mensonge"],
+    associations: ["journaliste", "article", "source", "vérification", "public", "débat", "réseau social"]
+  },
+  {
+    terms: ["desinformation", "fake news", "manipulation", "rumeur", "propagande"],
+    synonyms: ["fausse information", "intox", "mensonge médiatique", "rumeur", "information trompeuse", "propagande", "manipulation de l'opinion"],
+    antonyms: ["information fiable", "vérification des faits", "transparence", "vérité", "source crédible", "journalisme rigoureux", "exactitude"],
+    associations: ["réseaux sociaux", "complot", "fact-checking", "source", "partage viral", "opinion", "algorithme"]
+  },
+  {
+    terms: ["liberte", "expression", "pluralisme", "censure", "opinion"],
+    synonyms: ["liberté de parole", "droit d'expression", "diversité des opinions", "pluralité", "débat libre", "presse indépendante", "expression publique"],
+    antonyms: ["censure", "répression", "silence imposé", "propagande officielle", "pensée unique", "contrôle de l'information", "interdiction"],
+    associations: ["démocratie", "journaliste", "opinion", "débat", "droits", "tribune", "médias"]
+  },
+  {
+    terms: ["societe", "social", "sociale", "inegalite", "inegalites", "cohesion", "solidarite", "vivre"],
+    synonyms: ["vie collective", "lien social", "cohésion", "solidarité", "collectivité", "groupe social", "justice sociale"],
+    antonyms: ["fragmentation", "exclusion", "isolement", "injustice", "rupture sociale", "individualisme", "marginalisation"],
+    associations: ["citoyen", "quartier", "solidarité", "services publics", "associations", "inégalités", "cohésion"]
+  },
+  {
+    terms: ["discrimination", "prejuge", "laicite", "mixite", "exclusion", "integration"],
+    synonyms: ["traitement inégal", "stigmatisation", "exclusion", "préjugé", "ségrégation", "mise à l'écart", "injustice"],
+    antonyms: ["égalité de traitement", "inclusion", "tolérance", "respect", "intégration", "équité", "non-discrimination"],
+    associations: ["origine", "genre", "religion", "handicap", "droits", "plainte", "égalité"]
+  },
+  {
+    terms: ["logement", "pauvrete", "quartier", "aide", "bourse", "allocation"],
+    synonyms: ["habitat", "conditions de vie", "précarité matérielle", "difficulté sociale", "aide sociale", "hébergement", "ressources limitées"],
+    antonyms: ["aisance", "confort", "stabilité résidentielle", "prospérité", "sécurité matérielle", "autonomie financière", "logement digne"],
+    associations: ["loyer", "HLM", "revenu", "aides", "quartier", "famille", "services sociaux"]
+  },
+  {
+    terms: ["citoyennete", "benevolat", "engagement", "scrutin", "revendication", "manifestation"],
+    synonyms: ["participation citoyenne", "engagement civique", "action collective", "militantisme", "volontariat", "mobilisation", "devoir civique"],
+    antonyms: ["indifférence", "abstention", "désengagement", "passivité", "individualisme", "repli", "apathie civique"],
+    associations: ["vote", "association", "manifestation", "pétition", "solidarité", "droits", "responsabilité"]
+  },
+  {
+    terms: ["mondialisation", "mondiale", "international", "internationale", "echanges", "commerce"],
+    synonyms: ["globalisation", "internationalisation", "ouverture mondiale", "échanges internationaux", "intégration mondiale", "interconnexion", "circulation mondiale"],
+    antonyms: ["protectionnisme", "isolement", "autarcie", "fermeture", "repli national", "localisme", "fragmentation"],
+    associations: ["commerce", "frontières", "multinationales", "importations", "exportations", "marchés", "flux"]
+  },
+  {
+    terms: ["culture", "culturelle", "linguistique", "identite", "locale", "diversite", "uniformisation"],
+    synonyms: ["patrimoine culturel", "pluralité culturelle", "diversité", "identité locale", "traditions", "langues", "particularité culturelle"],
+    antonyms: ["uniformisation", "standardisation", "acculturation", "effacement culturel", "homogénéisation", "perte d'identité", "monoculture"],
+    associations: ["langue", "tradition", "cinéma", "tourisme", "patrimoine", "mode de vie", "culture locale"]
+  },
+  {
+    terms: ["delocalisation", "approvisionnement", "concurrence", "protectionnisme", "interdependance"],
+    synonyms: ["transfert d'activité", "externalisation", "chaîne mondiale", "dépendance économique", "concurrence globale", "interconnexion", "réorganisation productive"],
+    antonyms: ["relocalisation", "production locale", "autonomie économique", "protectionnisme", "circuit court", "souveraineté industrielle", "ancrage local"],
+    associations: ["usine", "coût du travail", "importations", "sous-traitance", "supply chain", "emploi", "frontières"]
+  },
+  {
+    terms: ["crise", "migratoire", "flux", "tourisme", "masse", "cooperation", "gouvernance"],
+    synonyms: ["mouvement de population", "circulation internationale", "coopération mondiale", "gestion globale", "déplacement massif", "mobilité internationale", "coordination internationale"],
+    antonyms: ["fermeture des frontières", "immobilité", "isolement", "repli", "absence de coopération", "fragmentation", "politique nationale fermée"],
+    associations: ["frontières", "migrants", "asile", "tourisme", "ONU", "accords", "solidarité internationale"]
+  },
+  {
+    terms: ["egalite", "droit", "droits", "acces", "priorite", "dispositif", "mesure"],
+    synonyms: ["équité", "justice", "garantie", "accès égal", "droit fondamental", "protection", "mesure publique"],
+    antonyms: ["inégalité", "privilège", "exclusion", "privation", "injustice", "restriction", "arbitraire"],
+    associations: ["loi", "citoyen", "service public", "égalité", "recours", "protection", "administration"]
+  },
+  {
+    terms: ["qualite", "amelioration", "niveau", "performance", "efficacite"],
+    synonyms: ["valeur", "niveau", "performance", "fiabilité", "efficacité", "amélioration", "excellence"],
+    antonyms: ["médiocrité", "dégradation", "inefficacité", "baisse de niveau", "défaillance", "insuffisance", "détérioration"],
+    associations: ["critère", "résultat", "évaluation", "service", "norme", "satisfaction", "progrès"]
+  },
+  {
+    terms: ["hausse", "baisse", "recul", "progresser", "degrader", "ameliorer"],
+    synonyms: ["variation", "évolution", "progression", "augmentation", "diminution", "changement", "tendance"],
+    antonyms: ["stabilité", "stagnation", "immobilité", "maintien", "constance", "absence d'évolution", "équilibre"],
+    associations: ["courbe", "statistique", "pourcentage", "indicateur", "tendance", "comparaison", "période"]
+  },
+  {
+    terms: ["enjeu", "defi", "question", "probleme", "priorite"],
+    synonyms: ["problématique", "question importante", "défi", "sujet central", "point sensible", "objectif", "préoccupation"],
+    antonyms: ["détail secondaire", "non-sujet", "solution évidente", "absence de problème", "faible priorité", "évidence", "banalité"],
+    associations: ["débat", "argument", "solution", "risque", "priorité", "décision", "responsabilité"]
+  },
+  {
+    terms: ["sondage", "selon", "d'apres", "source", "rapport", "enquete"],
+    synonyms: ["enquête d'opinion", "étude", "baromètre", "questionnaire", "données recueillies", "résultat statistique", "source citée"],
+    antonyms: ["impression personnelle", "rumeur", "affirmation gratuite", "absence de preuve", "intuition", "opinion non vérifiée", "approximation"],
+    associations: ["échantillon", "pourcentage", "répondants", "marge d'erreur", "institut", "résultat", "analyse"]
+  }
+];
+
 function detectVerb(fr) {
   const normalized = normalize(fr);
   return VERB_PATTERNS.find(pattern => normalized.startsWith(normalize(pattern))) || null;
@@ -331,11 +826,10 @@ function chineseExplanation(word, grammar) {
 function enhanceWords(sourceWords) {
   return sourceWords.map(word => {
     const grammar = detectGrammar(word);
-    const relation = CATEGORY_RELATIONS[word.category] || { synonyms: [], antonyms: [] };
     const lexical = lexicalRelationFor(word, grammar);
-    const synonyms = ensureAtLeastFive(word.synonyms, lexical.synonyms, relation.synonyms, word.fr);
-    const antonyms = ensureAtLeastFive(word.antonyms, lexical.antonyms, relation.antonyms, word.fr);
-    const associations = ensureAtLeastFive(word.associations, lexical.associations, relation.synonyms, word.fr);
+    const synonyms = ensureAtLeastFive(word.synonyms, lexical.synonyms, [], word.fr);
+    const antonyms = ensureAtLeastFive(word.antonyms, lexical.antonyms, [], word.fr);
+    const associations = ensureAtLeastFive(word.associations, lexical.associations, [], word.fr);
     return {
       ...word,
       pos: word.pos || grammar.pos,
@@ -357,6 +851,13 @@ function enhanceWords(sourceWords) {
 }
 
 function lexicalRelationFor(word, grammar) {
+  const merged = { synonyms: [], antonyms: [], associations: [], derived: [] };
+  const searchable = normalize([word.fr, stripArticle(word.fr), word.zh].join(" "));
+  const matchedPatterns = RELATION_PATTERNS
+    .map(pattern => ({ pattern, score: relationPatternScore(pattern, searchable) }))
+    .filter(match => match.score > 0)
+    .sort((a, b) => b.score - a.score);
+  for (const match of matchedPatterns) mergeRelations(merged, match.pattern);
   const keys = [
     grammar.verb,
     normalize(grammar.verb || "").replace(/^s'?|^se\s+/, ""),
@@ -366,9 +867,40 @@ function lexicalRelationFor(word, grammar) {
   for (const key of keys) {
     const normalized = normalize(key);
     const matchedKey = Object.keys(LEXICAL_RELATIONS).find(item => normalize(item) === normalized);
-    if (matchedKey) return LEXICAL_RELATIONS[matchedKey];
+    if (matchedKey) mergeRelations(merged, LEXICAL_RELATIONS[matchedKey]);
   }
-  return { synonyms: [], antonyms: [], associations: [], derived: [] };
+  return merged;
+}
+
+function relationPatternMatches(pattern, searchable) {
+  return relationPatternScore(pattern, searchable) > 0;
+}
+
+function relationPatternScore(pattern, searchable) {
+  const tokens = searchable.split(/\s+/).filter(Boolean);
+  return Math.max(0, ...pattern.terms.map(term => {
+    const normalized = normalize(term);
+    if (!normalized) return 0;
+    const matched = normalized.includes(" ")
+      ? searchable.includes(normalized)
+      : tokens.some(token => token === normalized || (normalized.length >= 6 && token.startsWith(normalized)));
+    if (!matched) return 0;
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    return wordCount * 100 + normalized.length;
+  }));
+}
+
+function mergeRelations(target, source = {}) {
+  for (const key of ["synonyms", "antonyms", "associations", "derived"]) {
+    for (const item of source[key] || []) {
+      if (item && !target[key].some(existing => normalize(existing) === normalize(item))) {
+        target[key].push(item);
+      }
+    }
+  }
+  if (!target.aide && source.aide) target.aide = source.aide;
+  if (!target.root && source.root) target.root = source.root;
+  return target;
 }
 
 function stripArticle(fr) {
@@ -376,7 +908,7 @@ function stripArticle(fr) {
 }
 
 function ensureAtLeastFive(primary = [], fallback = [], secondary = [], fr = "") {
-  const generalFallback = ["notion liée", "champ lexical", "contexte", "enjeu", "exemple", "usage"];
+  const generalFallback = ["terme voisin", "notion proche", "idée opposée", "contexte d'usage", "mot associé", "exemple concret"];
   const result = [];
   for (const item of [...primary, ...fallback, ...secondary, ...generalFallback]) {
     if (item && normalize(item) !== normalize(fr) && !result.some(existing => normalize(existing) === normalize(item))) {
