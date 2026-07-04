@@ -1,17 +1,21 @@
 const STORAGE_KEY = "delf-b2-vocab-progress";
 const IMPORT_KEY = "delf-b2-vocab-import";
 const LOOKUP_CACHE_KEY = "delf-b2-vocab-lookup-cache";
+const EUDIC_CACHE_KEY = "delf-b2-vocab-eudic-cache";
 const LOOKUP_API_URL = window.B2_LOOKUP_API || "/api/lookup";
+const EUDIC_API_URL = window.B2_EUDIC_API || "/api/eudic";
 
-let words = [...window.B2_VOCAB];
+let baseWords = [...window.B2_VOCAB];
 const imported = localStorage.getItem(IMPORT_KEY);
 if (imported) {
   try {
-    words = JSON.parse(imported);
+    baseWords = JSON.parse(imported);
   } catch {
     localStorage.removeItem(IMPORT_KEY);
   }
 }
+let eudicCache = loadEudicCache();
+let words = mergeWordSources(baseWords, eudicCache.words);
 
 let state = {
   view: "browse",
@@ -48,6 +52,8 @@ const els = {
   switchQuiz: document.querySelector("#switchQuiz"),
   install: document.querySelector("#installBtn"),
   importFile: document.querySelector("#importFile"),
+  syncEudic: document.querySelector("#syncEudic"),
+  eudicStatus: document.querySelector("#eudicStatus"),
   exportProgress: document.querySelector("#exportProgress"),
   resetProgress: document.querySelector("#resetProgress"),
   detailDialog: document.querySelector("#detailDialog"),
@@ -100,6 +106,42 @@ function loadLookupCache() {
 
 function saveLookupCache() {
   localStorage.setItem(LOOKUP_CACHE_KEY, JSON.stringify(lookupCache));
+}
+
+function loadEudicCache() {
+  try {
+    return JSON.parse(localStorage.getItem(EUDIC_CACHE_KEY)) || { words: [], syncedAt: "" };
+  } catch {
+    return { words: [], syncedAt: "" };
+  }
+}
+
+function saveEudicCache() {
+  localStorage.setItem(EUDIC_CACHE_KEY, JSON.stringify(eudicCache));
+}
+
+function mergeWordSources(primaryWords, eudicWords = []) {
+  const merged = [...primaryWords];
+  const existing = new Set(merged.map(word => normalize(stripArticle(word.fr) || word.fr)));
+  for (const word of eudicWords) {
+    const key = normalize(stripArticle(word.fr) || word.fr);
+    if (!key) continue;
+    if (existing.has(key)) {
+      merged.push({ ...word, fr: word.fr, category: "法语助手生词本" });
+    } else {
+      merged.push(word);
+      existing.add(key);
+    }
+  }
+  return merged;
+}
+
+function refreshWordsFromSources() {
+  words = enhanceWords(mergeWordSources(baseWords, eudicCache.words));
+  setupCategories();
+  renderStats();
+  renderWords();
+  if (state.view === "quiz") pickQuizWord();
 }
 
 function normalize(text) {
@@ -841,6 +883,7 @@ function chineseExplanation(word, grammar) {
 
 function enhanceWords(sourceWords) {
   return sourceWords.map(word => {
+    if (word.source === "eudic") return normalizeEudicWord(word);
     const grammar = detectGrammar(word);
     const lexical = lexicalRelationFor(word, grammar);
     const synonyms = ensureAtLeastFive(word.synonyms, lexical.synonyms, [], word.fr);
@@ -864,6 +907,31 @@ function enhanceWords(sourceWords) {
       derived: ensureAtLeastFive(word.derived, lexical.derived, [], word.fr)
     };
   });
+}
+
+function normalizeEudicWord(word) {
+  const grammar = detectGrammar(word);
+  const examples = Array.isArray(word.examples) ? word.examples.filter(example => example?.fr) : [];
+  return {
+    ...word,
+    category: "法语助手生词本",
+    tags: uniqueList([...(word.tags || []), "法语助手", "生词本"]),
+    pos: word.pos || grammar.pos || "法语助手未返回词性",
+    gender: word.gender || grammar.gender || "",
+    verb: word.verb || grammar.verb || "",
+    conjugationPhrase: grammar.verb ? word.fr : "",
+    explanation: {
+      fr: word.explanation?.fr || "法语助手未返回法语解释",
+      zh: word.explanation?.zh || word.zh || "法语助手未返回中文解释"
+    },
+    synonyms: uniqueList(word.synonyms || []),
+    antonyms: uniqueList(word.antonyms || []),
+    associations: uniqueList(word.associations || []),
+    examples,
+    memory: word.memory || "",
+    root: word.root || "",
+    derived: uniqueList(word.derived || [])
+  };
 }
 
 function lexicalRelationFor(word, grammar) {
@@ -1445,6 +1513,7 @@ function imperativePastPhrase(aux, participle, parsed) {
 }
 
 function setupCategories() {
+  els.category.innerHTML = `<option value="all">全部分类</option>`;
   const foundCategories = [...new Set(words.map(word => word.category))];
   const preferredOrder = window.B2_CATEGORY_ORDER || [];
   const categories = [
@@ -1508,22 +1577,25 @@ function renderWords() {
     const card = document.createElement("article");
     card.className = "word-card";
     const done = Boolean(state.progress.known[word.fr]);
+    const examples = Array.isArray(word.examples) ? word.examples : [];
     card.innerHTML = `
       <div class="word-head">
         <div>
-          <h2>${word.fr}</h2>
-          <p class="translation">${word.zh}</p>
+          <h2>${escapeHtml(word.fr)}</h2>
+          <p class="translation">${escapeHtml(word.zh)}</p>
         </div>
         <button class="known ${done ? "done" : ""}" type="button" aria-label="标记掌握">${done ? "✓" : "○"}</button>
       </div>
       <div class="badge-row">
-        <span class="badge">${word.category}</span>
-        <span class="badge">${word.pos}</span>
-        ${word.gender ? `<span class="badge">${word.gender}</span>` : ""}
-        ${word.tags.map(tag => `<span class="badge">${tag}</span>`).join("")}
+        <span class="badge">${escapeHtml(word.category)}</span>
+        <span class="badge">${escapeHtml(word.pos)}</span>
+        ${word.gender ? `<span class="badge">${escapeHtml(word.gender)}</span>` : ""}
+        ${word.tags.map(tag => `<span class="badge">${escapeHtml(tag)}</span>`).join("")}
       </div>
       <ol class="examples">
-        ${word.examples.map(example => `<li>${example.fr}<span>${example.zh}</span></li>`).join("")}
+        ${examples.length
+          ? examples.map(example => `<li>${escapeHtml(example.fr)}<span>${escapeHtml(example.zh)}</span></li>`).join("")
+          : `<li class="muted">法语助手未返回例句。</li>`}
       </ol>
     `;
     card.addEventListener("click", () => showDetail(word));
@@ -1538,12 +1610,28 @@ function renderWords() {
   }
 }
 
-function renderList(items) {
-  if (!items?.length) return `<span class="muted">暂无</span>`;
+function renderList(items, emptyText = "暂无") {
+  if (!items?.length) return `<span class="muted">${escapeHtml(emptyText)}</span>`;
   return items.map(item => `<span class="pill">${escapeHtml(item)}</span>`).join("");
 }
 
 function renderConjugation(word) {
+  if (word.source === "eudic") {
+    if (word.conjugation) {
+      return `
+        <section class="detail-section">
+          <h3>动词变位 · Conjugaison</h3>
+          ${renderApiConjugation(word.conjugation)}
+        </section>
+      `;
+    }
+    return `
+      <section class="detail-section">
+        <h3>动词变位 · Conjugaison</h3>
+        <p class="muted">法语助手未返回动词变位。</p>
+      </section>
+    `;
+  }
   if (!word.verb) return "";
   const phrase = word.conjugationPhrase || word.verb;
   const forms = conjugateVerb(phrase);
@@ -1596,51 +1684,69 @@ function showDetail(word) {
 }
 
 function renderDetailBody(word, apiEntry, lookupStatus = "") {
+  const isEudic = word.source === "eudic";
+  const missingText = isEudic ? "法语助手未返回" : "暂无";
+  const examples = Array.isArray(word.examples) ? word.examples : [];
   els.detailBody.innerHTML = `
     <section class="detail-section">
       <h3>词性 · Nature</h3>
       <div class="detail-grid">
-        <div><strong>词性</strong><span>${word.pos}</span></div>
-        <div><strong>阴阳性</strong><span>${word.gender || "不适用"}</span></div>
+        <div><strong>词性</strong><span>${escapeHtml(word.pos)}</span></div>
+        <div><strong>阴阳性</strong><span>${escapeHtml(word.gender || "不适用")}</span></div>
       </div>
     </section>
     <section class="detail-section">
       <h3>解释 · Définition</h3>
-      <p>${word.explanation.zh}</p>
-      <p class="muted">${word.explanation.fr}</p>
+      <p>${escapeHtml(word.explanation.zh)}</p>
+      <p class="muted">${escapeHtml(word.explanation.fr)}</p>
     </section>
+    ${isEudic ? `
+      <section class="detail-section">
+        <h3>来源 · Source</h3>
+        <div class="detail-grid">
+          <div><strong>来源</strong><span>法语助手生词本</span></div>
+          <div><strong>原生词本</strong><span>${escapeHtml(word.eudicCategory || "法语助手未返回")}</span></div>
+        </div>
+      </section>
+    ` : ""}
     <section class="detail-section">
       <h3>助记 · Racine</h3>
       <div class="detail-grid">
-        <div><strong>助记</strong><span>${word.memory || "暂无"}</span></div>
-        <div><strong>词根</strong><span>${word.root || "暂无"}</span></div>
+        <div><strong>助记</strong><span>${escapeHtml(word.memory || missingText)}</span></div>
+        <div><strong>词根</strong><span>${escapeHtml(word.root || missingText)}</span></div>
       </div>
-      <div class="pill-row detail-pills">${renderList(word.derived)}</div>
+      <div class="pill-row detail-pills">${renderList(word.derived, missingText)}</div>
     </section>
     <section class="detail-section">
       <h3>近义词 · Synonymes</h3>
-      <div class="pill-row">${renderList(word.synonyms)}</div>
+      <div class="pill-row">${renderList(word.synonyms, missingText)}</div>
     </section>
     <section class="detail-section">
       <h3>反义词 · Antonymes</h3>
-      <div class="pill-row">${renderList(word.antonyms)}</div>
+      <div class="pill-row">${renderList(word.antonyms, missingText)}</div>
     </section>
     <section class="detail-section">
       <h3>联想词 · Mots associés</h3>
-      <div class="pill-row">${renderList(word.associations)}</div>
+      <div class="pill-row">${renderList(word.associations, missingText)}</div>
     </section>
     ${renderConjugation(word)}
     <section class="detail-section">
       <h3>例句 · Exemples</h3>
       <ol class="examples">
-        ${word.examples.map(example => `<li>${example.fr}<span>${example.zh}</span></li>`).join("")}
+        ${examples.length
+          ? examples.map(example => `<li>${escapeHtml(example.fr)}<span>${escapeHtml(example.zh)}</span></li>`).join("")
+          : `<li class="muted">${isEudic ? "法语助手未返回例句。" : "暂无例句。"}</li>`}
       </ol>
     </section>
-    ${renderApiSection(apiEntry, lookupStatus)}
+    ${isEudic ? "" : renderApiSection(apiEntry, lookupStatus)}
   `;
 }
 
 async function enrichDetailFromApi(word) {
+  if (word.source === "eudic") {
+    renderDetailBody(word, null, "该词条来自法语助手生词本同步缓存。");
+    return;
+  }
   const cacheKey = lookupCacheKey(word);
   if (lookupCache[cacheKey]) {
     renderDetailBody(word, lookupCache[cacheKey], "已加载本地缓存的法语助手增强内容。");
@@ -1846,10 +1952,93 @@ function checkAnswer() {
   saveProgress();
   renderStats();
 
-  const example = word.examples[0];
+  const example = word.examples[0] || { fr: "法语助手未返回例句。", zh: "" };
   els.feedback.innerHTML = ok && answer
-    ? `<strong>正确。</strong><br>${word.fr} = ${word.zh}<br>${example.fr}<br>${example.zh}`
-    : `<strong>答案：</strong>${word.fr} = ${word.zh}<br>${example.fr}<br>${example.zh}`;
+    ? `<strong>正确。</strong><br>${escapeHtml(word.fr)} = ${escapeHtml(word.zh)}<br>${escapeHtml(example.fr)}<br>${escapeHtml(example.zh)}`
+    : `<strong>答案：</strong>${escapeHtml(word.fr)} = ${escapeHtml(word.zh)}<br>${escapeHtml(example.fr)}<br>${escapeHtml(example.zh)}`;
+}
+
+function setEudicStatus(message, tone = "") {
+  if (!els.eudicStatus) return;
+  els.eudicStatus.textContent = message;
+  els.eudicStatus.dataset.tone = tone;
+}
+
+function renderEudicStatus() {
+  const count = eudicCache.words?.length || 0;
+  if (!count) {
+    setEudicStatus("尚未同步法语助手生词本。同步后会缓存到本机，离线时也可复习。");
+    return;
+  }
+  const syncedAt = eudicCache.syncedAt ? new Date(eudicCache.syncedAt) : null;
+  const time = syncedAt && !Number.isNaN(syncedAt.getTime())
+    ? syncedAt.toLocaleString("zh-CN", { hour12: false })
+    : "未知时间";
+  setEudicStatus(`已缓存 ${count} 个法语助手生词，最后同步：${time}。`);
+}
+
+async function syncEudicWords() {
+  if (!navigator.onLine) {
+    setEudicStatus("当前离线，无法同步；仍可使用已缓存的法语助手生词。", "error");
+    return;
+  }
+  els.syncEudic.disabled = true;
+  setEudicStatus("正在连接法语助手并同步生词本...");
+  try {
+    const response = await fetch(`${EUDIC_API_URL}?action=sync`);
+    if (!response.ok) {
+      const payload = await safeJson(response);
+      const message = payload?.error === "Eudic proxy is not configured"
+        ? "Vercel 还没有配置 FRDIC_API_KEY，无法同步法语助手生词本。"
+        : `法语助手同步失败（HTTP ${response.status}）。`;
+      setEudicStatus(message, "error");
+      return;
+    }
+    const payload = await response.json();
+    const syncedWords = normalizeEudicSyncWords(payload.words || []);
+    eudicCache = {
+      source: "eudic",
+      syncedAt: payload.syncedAt || new Date().toISOString(),
+      words: syncedWords
+    };
+    saveEudicCache();
+    refreshWordsFromSources();
+    setEudicStatus(`已同步 ${syncedWords.length} 个法语助手生词，并加入随机测试。`, "success");
+  } catch {
+    setEudicStatus("无法连接法语助手同步代理；请检查 Vercel 部署和网络。", "error");
+  } finally {
+    els.syncEudic.disabled = false;
+  }
+}
+
+function normalizeEudicSyncWords(items) {
+  const normalized = items.map(item => ({
+    ...item,
+    source: "eudic",
+    category: "法语助手生词本",
+    tags: uniqueList([...(item.tags || []), "法语助手", "生词本"]),
+    fr: String(item.fr || item.word || "").trim(),
+    zh: String(item.zh || item.translation || item.explanation?.zh || "法语助手未返回中文释义").trim(),
+    examples: normalizeExamples(item.examples || []),
+    synonyms: normalizeStringList(item.synonyms || []),
+    antonyms: normalizeStringList(item.antonyms || []),
+    associations: normalizeStringList(item.associations || [])
+  })).filter(item => item.fr);
+  const seen = new Set();
+  return normalized.filter(item => {
+    const key = normalize(item.fr);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function safeJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 els.tabs.forEach(tab => {
@@ -1899,6 +2088,10 @@ els.importFile.addEventListener("change", async event => {
   location.reload();
 });
 
+if (els.syncEudic) {
+  els.syncEudic.addEventListener("click", syncEudicWords);
+}
+
 els.exportProgress.addEventListener("click", () => {
   const blob = new Blob([JSON.stringify(state.progress, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1925,4 +2118,5 @@ words = enhanceWords(words);
 setupCategories();
 renderStats();
 renderWords();
+renderEudicStatus();
 pickQuizWord();

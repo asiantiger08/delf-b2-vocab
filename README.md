@@ -22,12 +22,13 @@
 - 学习记录：本地保存已掌握词条、测试次数和正确率。
 - 词库导入：可以导入同样结构的 JSON 词库继续扩展。
 - 在线增强：可通过后端代理连接法语助手 MCP，读取账号语料库中已有词条的释义和上下文；返回内容会缓存在本机，离线时继续可用。
+- 法语助手生词本：在“词库”页手动同步账号生词本，生成独立分类 `法语助手生词本`，并加入随机测试；同步结果缓存在本机。
 
 ## 法语助手 API 接入
 
 不要把 API key 写进 `app.js`、`index.html` 或任何会部署到 GitHub Pages 的前端文件。前端已经固定调用 `/api/lookup?word=...`，真正的 key 应放在后端环境变量里。
 
-仓库中提供了 `api/lookup.js` 作为 Vercel/Serverless 代理模板。部署代理时设置这些环境变量：
+仓库中提供了 `api/lookup.js` 和 `api/eudic.js` 作为 Vercel/Serverless 代理模板。部署代理时设置这些环境变量：
 
 - `FRDIC_API_KEY`：你的 API key，格式为 `NIS {token}`。
 - `FRDIC_API_URL`：可选，默认 `https://api.frdic.com/fr/mcp`。
@@ -37,6 +38,8 @@
 - `ALLOWED_ORIGIN`：允许访问代理的前端域名，例如 `https://asiantiger08.github.io`。
 
 截图中的 MCP 地址 `https://api.frdic.com/{language}/mcp` 已接入代理。当前使用的 MCP 工具是 `get_user_vocab_by_words`，它查询的是法语助手账号语料库/已收录词条，不是公共词典全库。因此如果某个词没有被账号语料库收录，在线增强会提示“法语助手账号语料库中没有这个词条”，本地词库仍会正常显示。
+
+`/api/eudic?action=sync` 会调用法语助手 MCP 的生词本接口，读取账号里的生词分类和词条，前端统一放入 `法语助手生词本` 分类。该分类的信息以法语助手返回值为准；未返回的近义词、反义词、联想词、例句或变位会显示“法语助手未返回”，不会用主题词自动填充。
 
 如果仍然只使用 GitHub Pages，网页会保留离线词库功能，但在线增强会提示“尚未部署 API 代理”。要启用在线增强，需要把代理部署到支持 Serverless 的平台，或把整站迁移到 Vercel/Netlify。
 

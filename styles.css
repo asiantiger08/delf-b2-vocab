@@ -451,6 +451,38 @@ select {
   line-height: 1.6;
 }
 
+.sync-panel {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbf8f1;
+}
+
+.sync-panel h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.sync-status {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--accent);
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.sync-status[data-tone="success"] {
+  background: #e8f3e8;
+  color: #24623a;
+}
+
+.sync-status[data-tone="error"] {
+  background: #f8e8e4;
+  color: var(--accent-2);
+}
+
 .manage-block button,
 .file-import {
   display: flex;

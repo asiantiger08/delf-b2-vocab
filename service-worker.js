@@ -1,12 +1,12 @@
-const CACHE = "delf-b2-vocab-v12";
+const CACHE = "delf-b2-vocab-v13";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=12",
-  "./app.js?v=12",
-  "./data/vocab.js?v=12",
-  "./data/vocab-3000.js?v=12",
-  "./manifest.webmanifest?v=12",
+  "./styles.css?v=13",
+  "./app.js?v=13",
+  "./data/vocab.js?v=13",
+  "./data/vocab-3000.js?v=13",
+  "./manifest.webmanifest?v=13",
   "./icon.svg"
 ];
 
