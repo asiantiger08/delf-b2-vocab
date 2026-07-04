@@ -1,5 +1,7 @@
 const STORAGE_KEY = "delf-b2-vocab-progress";
 const IMPORT_KEY = "delf-b2-vocab-import";
+const LOOKUP_CACHE_KEY = "delf-b2-vocab-lookup-cache";
+const LOOKUP_API_URL = window.B2_LOOKUP_API || "/api/lookup";
 
 let words = [...window.B2_VOCAB];
 const imported = localStorage.getItem(IMPORT_KEY);
@@ -18,6 +20,7 @@ let state = {
   tag: "all",
   quizMode: "fr-zh",
   current: null,
+  detailWordKey: "",
   progress: loadProgress()
 };
 
@@ -56,6 +59,7 @@ const els = {
 };
 
 let deferredInstall = null;
+let lookupCache = loadLookupCache();
 
 window.addEventListener("beforeinstallprompt", event => {
   event.preventDefault();
@@ -84,6 +88,18 @@ function loadProgress() {
 
 function saveProgress() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
+}
+
+function loadLookupCache() {
+  try {
+    return JSON.parse(localStorage.getItem(LOOKUP_CACHE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLookupCache() {
+  localStorage.setItem(LOOKUP_CACHE_KEY, JSON.stringify(lookupCache));
 }
 
 function normalize(text) {
@@ -1524,7 +1540,7 @@ function renderWords() {
 
 function renderList(items) {
   if (!items?.length) return `<span class="muted">暂无</span>`;
-  return items.map(item => `<span class="pill">${item}</span>`).join("");
+  return items.map(item => `<span class="pill">${escapeHtml(item)}</span>`).join("");
 }
 
 function renderConjugation(word) {
@@ -1570,9 +1586,16 @@ function renderConjugation(word) {
 }
 
 function showDetail(word) {
+  state.detailWordKey = word.fr;
   els.detailCategory.textContent = word.category;
   els.detailTitle.textContent = word.fr;
   els.detailTranslation.textContent = word.zh;
+  renderDetailBody(word, lookupCache[lookupCacheKey(word)], "正在准备本地内容...");
+  els.detailDialog.showModal();
+  enrichDetailFromApi(word);
+}
+
+function renderDetailBody(word, apiEntry, lookupStatus = "") {
   els.detailBody.innerHTML = `
     <section class="detail-section">
       <h3>词性 · Nature</h3>
@@ -1613,8 +1636,178 @@ function showDetail(word) {
         ${word.examples.map(example => `<li>${example.fr}<span>${example.zh}</span></li>`).join("")}
       </ol>
     </section>
+    ${renderApiSection(apiEntry, lookupStatus)}
   `;
-  els.detailDialog.showModal();
+}
+
+async function enrichDetailFromApi(word) {
+  const cacheKey = lookupCacheKey(word);
+  if (lookupCache[cacheKey]) {
+    renderDetailBody(word, lookupCache[cacheKey], "已加载本地缓存的法语助手增强内容。");
+  }
+
+  if (!navigator.onLine) {
+    renderDetailBody(word, lookupCache[cacheKey], "当前离线，显示本地词库和已缓存的在线内容。");
+    return;
+  }
+
+  try {
+    renderDetailBody(word, lookupCache[cacheKey], "正在连接在线词典...");
+    const query = stripArticle(word.fr) || word.fr;
+    const response = await fetch(`${LOOKUP_API_URL}?word=${encodeURIComponent(query)}&source=${encodeURIComponent(word.fr)}`);
+    if (!response.ok) {
+      const message = response.status === 404
+        ? "尚未部署 API 代理；本地词库仍可离线使用。"
+        : `在线词典暂时不可用（HTTP ${response.status}）。`;
+      renderDetailBody(word, lookupCache[cacheKey], message);
+      return;
+    }
+    const payload = await response.json();
+    const normalized = normalizeLookupPayload(payload);
+    if (!hasLookupContent(normalized)) {
+      renderDetailBody(word, lookupCache[cacheKey], "在线词典没有返回可用的增强字段。");
+      return;
+    }
+    lookupCache[cacheKey] = { ...normalized, fetchedAt: new Date().toISOString() };
+    saveLookupCache();
+    if (state.detailWordKey === word.fr && els.detailDialog.open) {
+      renderDetailBody(word, lookupCache[cacheKey], "已同步在线词典内容，并缓存到本机。");
+    }
+  } catch {
+    renderDetailBody(word, lookupCache[cacheKey], "无法连接在线词典代理；请检查代理部署和网络。");
+  }
+}
+
+function lookupCacheKey(word) {
+  return normalize(stripArticle(word.fr) || word.fr);
+}
+
+function normalizeLookupPayload(payload = {}) {
+  const data = payload.data || payload.result || payload.entry || payload;
+  const definitions = normalizeDefinitions(data);
+  return {
+    source: String(payload.source || data.source || "法语助手 API"),
+    word: String(data.word || data.query || data.fr || ""),
+    definitions,
+    synonyms: normalizeStringList(data.synonyms || data.synonymes || data.synonym || data.syno),
+    antonyms: normalizeStringList(data.antonyms || data.antonymes || data.antonym || data.anto),
+    associations: normalizeStringList(data.associations || data.related || data.associated || data.collocations),
+    examples: normalizeExamples(data.examples || data.exampleSentences || data.sentences),
+    conjugation: data.conjugation || data.conjugations || data.forms || null,
+    rawHtml: typeof data.html === "string" ? data.html : ""
+  };
+}
+
+function normalizeDefinitions(data = {}) {
+  const direct = [
+    ...normalizeStringList(data.definitions),
+    ...normalizeStringList(data.definition),
+    ...normalizeStringList(data.explains),
+    ...normalizeStringList(data.translation),
+    ...normalizeStringList(data.translations),
+    ...normalizeStringList(data.frDefinition),
+    ...normalizeStringList(data.zhDefinition)
+  ];
+  if (data.basic?.explains) direct.push(...normalizeStringList(data.basic.explains));
+  return uniqueList(direct);
+}
+
+function normalizeStringList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return uniqueList(value.flatMap(item => normalizeStringList(item)));
+  if (typeof value === "object") return uniqueList(Object.values(value).flatMap(item => normalizeStringList(item)));
+  return String(value)
+    .split(/\n|；|;/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeExamples(value) {
+  if (!value) return [];
+  const items = Array.isArray(value) ? value : [value];
+  return items.map(item => {
+    if (typeof item === "string") return { fr: item, zh: "" };
+    return {
+      fr: String(item.fr || item.sentence || item.source || item.text || ""),
+      zh: String(item.zh || item.translation || item.target || "")
+    };
+  }).filter(example => example.fr);
+}
+
+function uniqueList(items) {
+  const result = [];
+  for (const item of items) {
+    const text = String(item || "").trim();
+    if (text && !result.some(existing => normalize(existing) === normalize(text))) result.push(text);
+  }
+  return result;
+}
+
+function hasLookupContent(entry) {
+  return Boolean(
+    entry?.definitions?.length ||
+    entry?.synonyms?.length ||
+    entry?.antonyms?.length ||
+    entry?.associations?.length ||
+    entry?.examples?.length ||
+    entry?.conjugation ||
+    entry?.rawHtml
+  );
+}
+
+function renderApiSection(entry, status) {
+  return `
+    <section class="detail-section online-section">
+      <h3>在线词典增强 · Enrichissement</h3>
+      <p class="lookup-status">${escapeHtml(status || "等待在线词典返回内容。")}</p>
+      ${entry ? `
+        ${entry.definitions?.length ? `
+          <div class="online-block">
+            <strong>词典解释</strong>
+            <ul>${entry.definitions.slice(0, 8).map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+        ` : ""}
+        ${entry.synonyms?.length ? `<div class="online-block"><strong>近义词</strong><div class="pill-row">${renderList(entry.synonyms.slice(0, 12))}</div></div>` : ""}
+        ${entry.antonyms?.length ? `<div class="online-block"><strong>反义词</strong><div class="pill-row">${renderList(entry.antonyms.slice(0, 12))}</div></div>` : ""}
+        ${entry.associations?.length ? `<div class="online-block"><strong>搭配/联想</strong><div class="pill-row">${renderList(entry.associations.slice(0, 12))}</div></div>` : ""}
+        ${entry.examples?.length ? `
+          <div class="online-block">
+            <strong>在线例句</strong>
+            <ol class="examples">${entry.examples.slice(0, 5).map(example => `<li>${escapeHtml(example.fr)}${example.zh ? `<span>${escapeHtml(example.zh)}</span>` : ""}</li>`).join("")}</ol>
+          </div>
+        ` : ""}
+        ${entry.conjugation ? renderApiConjugation(entry.conjugation) : ""}
+      ` : ""}
+    </section>
+  `;
+}
+
+function renderApiConjugation(conjugation) {
+  if (!conjugation || typeof conjugation !== "object") return "";
+  const rows = Object.entries(conjugation).slice(0, 24);
+  if (!rows.length) return "";
+  return `
+    <div class="online-block">
+      <strong>在线变位</strong>
+      <div class="conjugation">
+        ${rows.map(([tense, forms]) => `
+          <div>
+            <strong>${escapeHtml(tense)}</strong>
+            ${normalizeStringList(forms).slice(0, 8).map(form => `<span>${escapeHtml(form)}</span>`).join("")}
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function pickQuizWord() {
