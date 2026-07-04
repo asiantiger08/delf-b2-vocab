@@ -50,6 +50,17 @@ export default async function handler(request, response) {
       return;
     }
 
+    if (action === "word") {
+      const word = String(request.query.word || "").trim();
+      if (!word) {
+        response.status(400).json({ error: "Missing word" });
+        return;
+      }
+      const entry = await getSingleWordDetail(endpoint, headers, language, word);
+      response.status(200).json({ source: "eudic", word, data: entry });
+      return;
+    }
+
     const categories = await getCategories(endpoint, headers, language);
     const selectedCategoryId = String(request.query.categoryId || "").trim();
     const selected = selectedCategoryId
@@ -129,6 +140,33 @@ async function getUserVocabDetails(endpoint, headers, language, words) {
   return details;
 }
 
+async function getSingleWordDetail(endpoint, headers, language, word) {
+  let detail = {};
+  try {
+    const payload = await callMcpTool(endpoint, headers, language, "get_word", { word });
+    detail = extractDetailObject(payload, word);
+  } catch {
+    detail = {};
+  }
+
+  if (!hasDetailContent(detail)) {
+    try {
+      const payload = await callMcpTool(endpoint, headers, language, "get_user_vocab_by_words", { words: [word] });
+      const [first] = extractArray(payload);
+      detail = extractDetailObject(first, word);
+    } catch {
+      detail = {};
+    }
+  }
+
+  return normalizeWordEntry({
+    fr: word,
+    zh: "",
+    eudicCategory: "",
+    raw: {}
+  }, detail);
+}
+
 async function callMcpTool(endpoint, headers, language, name, args) {
   const url = new URL(endpoint.replace("{language}", language));
   const upstream = await fetch(url, {
@@ -167,30 +205,84 @@ function parseMcpPayload(text) {
 function mergeWordsWithDetails(rawWords, details) {
   return rawWords.map(item => {
     const detail = details.get(normalizeForCompare(item.fr)) || {};
-    const definitions = firstDefined(detail.definitions, detail.definition, detail.explains, detail.exp, detail.translation, detail.translations, detail.basic?.explains);
-    const examples = normalizeExamples(firstDefined(detail.examples, detail.sentences, detail.exampleSentences, detail.contexts));
-    const zh = normalizeText(item.zh) || firstTranslation(definitions) || normalizeText(detail.translation || detail.trans || "");
-    return {
-      fr: item.fr,
-      zh: zh || "法语助手未返回中文释义",
-      category: "法语助手生词本",
-      source: "eudic",
-      eudicCategory: item.eudicCategory,
-      pos: normalizeText(detail.pos || detail.partOfSpeech || detail.nature || ""),
-      gender: normalizeText(detail.gender || detail.genre || ""),
-      explanation: {
-        fr: firstFrenchDefinition(detail, definitions),
-        zh: zh || "法语助手未返回中文解释"
-      },
-      synonyms: normalizeStringList(firstDefined(detail.synonyms, detail.synonymes, detail.syno, detail.synonym)),
-      antonyms: normalizeStringList(firstDefined(detail.antonyms, detail.antonymes, detail.anto, detail.antonym)),
-      associations: normalizeStringList(firstDefined(detail.associations, detail.related, detail.collocations, detail.phrases, detail.contexts)),
-      examples,
-      conjugation: detail.conjugation || detail.conjugations || detail.forms || null,
-      tags: ["法语助手", "生词本"],
-      raw: sanitizeRawDetail(detail)
-    };
+    return normalizeWordEntry(item, detail);
   });
+}
+
+function normalizeWordEntry(item, detail = {}) {
+  const raw = normalizeRawWord(item.raw || {});
+  const data = { ...raw, ...detail };
+  const definitions = firstDefined(
+    data.definitions,
+    data.definition,
+    data.explains,
+    data.exp,
+    data.translation,
+    data.translations,
+    data.trans,
+    data.meaning,
+    data.note,
+    data.basic?.explains
+  );
+  const examples = normalizeExamples(firstDefined(data.examples, data.sentences, data.exampleSentences, data.contexts, data.sample_sentences));
+  const zh = normalizeText(item.zh) || firstTranslation(definitions) || normalizeText(data.translation || data.trans || data.meaning || "");
+  const frDefinition = firstFrenchDefinition(data, definitions);
+  return {
+    fr: item.fr,
+    zh: zh || "法语助手未返回中文释义",
+    category: "法语助手生词本",
+    source: "eudic",
+    eudicCategory: item.eudicCategory,
+    pos: normalizeText(data.pos || data.partOfSpeech || data.nature || data.part_of_speech || ""),
+    gender: normalizeText(data.gender || data.genre || ""),
+    explanation: {
+      fr: frDefinition,
+      zh: zh || "法语助手未返回中文解释"
+    },
+    synonyms: normalizeStringList(firstDefined(data.synonyms, data.synonymes, data.syno, data.synonym)),
+    antonyms: normalizeStringList(firstDefined(data.antonyms, data.antonymes, data.anto, data.antonym)),
+    associations: normalizeStringList(firstDefined(data.associations, data.related, data.collocations, data.phrases, data.contexts)),
+    examples,
+    conjugation: data.conjugation || data.conjugations || data.forms || null,
+    tags: ["法语助手", "生词本"],
+    raw: sanitizeRawDetail(data)
+  };
+}
+
+function normalizeRawWord(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  return {
+    word: raw.word || raw.name || raw.fr || raw.vocab || raw.text,
+    translation: raw.translation || raw.trans || raw.explain || raw.meaning || raw.note,
+    definitions: raw.definitions || raw.definition || raw.explains || raw.exp,
+    examples: raw.examples || raw.sentences || raw.exampleSentences,
+    pos: raw.pos || raw.partOfSpeech || raw.nature,
+    gender: raw.gender || raw.genre,
+    synonyms: raw.synonyms || raw.synonymes || raw.syno || raw.synonym,
+    antonyms: raw.antonyms || raw.antonymes || raw.anto || raw.antonym,
+    associations: raw.associations || raw.related || raw.collocations || raw.phrases
+  };
+}
+
+function extractDetailObject(payload, word) {
+  const first = Array.isArray(payload) ? payload[0] : payload;
+  const data = first?.data || first?.result || first?.entry || first?.wordInfo || first || {};
+  if (!data || typeof data !== "object") return {};
+  const result = { ...data };
+  if (!result.word) result.word = word;
+  return result;
+}
+
+function hasDetailContent(detail) {
+  if (!detail || typeof detail !== "object") return false;
+  return Boolean(
+    firstTranslation(firstDefined(detail.definitions, detail.definition, detail.explains, detail.exp, detail.translation, detail.translations, detail.trans, detail.meaning, detail.basic?.explains)) ||
+    normalizeExamples(firstDefined(detail.examples, detail.sentences, detail.exampleSentences, detail.contexts)).length ||
+    normalizeStringList(firstDefined(detail.synonyms, detail.synonymes, detail.syno, detail.synonym)).length ||
+    detail.conjugation ||
+    detail.conjugations ||
+    detail.forms
+  );
 }
 
 function extractArray(payload) {

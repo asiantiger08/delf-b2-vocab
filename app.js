@@ -1,7 +1,7 @@
 const STORAGE_KEY = "delf-b2-vocab-progress";
 const IMPORT_KEY = "delf-b2-vocab-import";
 const LOOKUP_CACHE_KEY = "delf-b2-vocab-lookup-cache";
-const EUDIC_CACHE_KEY = "delf-b2-vocab-eudic-cache";
+const EUDIC_CACHE_KEY = "delf-b2-vocab-eudic-cache-v2";
 const LOOKUP_API_URL = window.B2_LOOKUP_API || "/api/lookup";
 const EUDIC_API_URL = window.B2_EUDIC_API || "/api/eudic";
 
@@ -1744,7 +1744,7 @@ function renderDetailBody(word, apiEntry, lookupStatus = "") {
 
 async function enrichDetailFromApi(word) {
   if (word.source === "eudic") {
-    renderDetailBody(word, null, "该词条来自法语助手生词本同步缓存。");
+    await enrichEudicDetail(word);
     return;
   }
   const cacheKey = lookupCacheKey(word);
@@ -1782,6 +1782,51 @@ async function enrichDetailFromApi(word) {
   } catch {
     renderDetailBody(word, lookupCache[cacheKey], "无法连接在线词典代理；请检查代理部署和网络。");
   }
+}
+
+async function enrichEudicDetail(word) {
+  if (!navigator.onLine) {
+    renderDetailBody(word, null, "当前离线，显示已缓存的法语助手生词本内容。");
+    return;
+  }
+
+  try {
+    renderDetailBody(word, null, "正在连接法语助手补充释义...");
+    const response = await fetch(`${EUDIC_API_URL}?action=word&word=${encodeURIComponent(word.fr)}`);
+    if (!response.ok) {
+      renderDetailBody(word, null, `法语助手详情暂时不可用（HTTP ${response.status}）。`);
+      return;
+    }
+    const payload = await response.json();
+    const detail = normalizeEudicSyncWords([{
+      ...word,
+      ...(payload.data || {}),
+      fr: word.fr,
+      eudicCategory: word.eudicCategory
+    }])[0];
+    if (!detail) {
+      renderDetailBody(word, null, "法语助手没有返回可用释义。");
+      return;
+    }
+    updateCachedEudicWord(detail);
+    if (state.detailWordKey === word.fr && els.detailDialog.open) {
+      renderDetailBody(detail, null, "已从法语助手补充释义，并缓存到本机。");
+    }
+  } catch {
+    renderDetailBody(word, null, "无法连接法语助手详情接口；请稍后重试。");
+  }
+}
+
+function updateCachedEudicWord(updatedWord) {
+  const key = normalize(updatedWord.fr);
+  eudicCache.words = (eudicCache.words || []).map(item => (
+    normalize(item.fr) === key ? { ...item, ...updatedWord } : item
+  ));
+  if (!eudicCache.words.some(item => normalize(item.fr) === key)) {
+    eudicCache.words.push(updatedWord);
+  }
+  saveEudicCache();
+  words = enhanceWords(mergeWordSources(baseWords, eudicCache.words));
 }
 
 function lookupCacheKey(word) {
