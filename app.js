@@ -2,8 +2,10 @@ const STORAGE_KEY = "delf-b2-vocab-progress";
 const IMPORT_KEY = "delf-b2-vocab-import";
 const LOOKUP_CACHE_KEY = "delf-b2-vocab-lookup-cache";
 const EUDIC_CACHE_KEY = "delf-b2-vocab-eudic-cache-v2";
-const LOOKUP_API_URL = window.B2_LOOKUP_API || "/api/lookup";
-const EUDIC_API_URL = window.B2_EUDIC_API || "/api/eudic";
+const VERCEL_API_BASE = "https://delf-b2-vocab-vercel.vercel.app";
+const IS_LOCAL_FILE = window.location.protocol === "file:";
+const LOOKUP_API_URL = window.B2_LOOKUP_API || (IS_LOCAL_FILE ? `${VERCEL_API_BASE}/api/lookup` : "/api/lookup");
+const EUDIC_API_URL = window.B2_EUDIC_API || (IS_LOCAL_FILE ? `${VERCEL_API_BASE}/api/eudic` : "/api/eudic");
 
 let baseWords = [...window.B2_VOCAB];
 const imported = localStorage.getItem(IMPORT_KEY);
