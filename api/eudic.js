@@ -224,17 +224,22 @@ function normalizeWordEntry(item, detail = {}) {
     data.note,
     data.basic?.explains
   );
-  const examples = normalizeExamples(firstDefined(data.examples, data.sentences, data.exampleSentences, data.contexts, data.sample_sentences));
-  const zh = normalizeText(item.zh) || firstTranslation(definitions) || normalizeText(data.translation || data.trans || data.meaning || "");
+  const parsedExp = parseExpText(firstDefined(data.exp, data.explains, data.definition, data.definitions, data.translation, data.trans, data.meaning, item.zh));
+  const examples = [
+    ...normalizeExamples(firstDefined(data.examples, data.sentences, data.exampleSentences, data.contexts, data.sample_sentences)),
+    ...parsedExp.examples
+  ];
+  const zh = cleanDefinitionText(normalizeText(item.zh)) || parsedExp.zh || firstTranslation(definitions) || cleanDefinitionText(data.translation || data.trans || data.meaning || "");
   const frDefinition = firstFrenchDefinition(data, definitions);
+  const grammar = parseGrammar(data, parsedExp.cleaned);
   return {
     fr: item.fr,
     zh: zh || "法语助手未返回中文释义",
     category: "法语助手生词本",
     source: "eudic",
     eudicCategory: item.eudicCategory,
-    pos: normalizeText(data.pos || data.partOfSpeech || data.nature || data.part_of_speech || ""),
-    gender: normalizeText(data.gender || data.genre || ""),
+    pos: normalizeText(data.pos || data.partOfSpeech || data.nature || data.part_of_speech || grammar.pos || ""),
+    gender: normalizeText(data.gender || data.genre || grammar.gender || ""),
     explanation: {
       fr: frDefinition,
       zh: zh || "法语助手未返回中文解释"
@@ -242,7 +247,7 @@ function normalizeWordEntry(item, detail = {}) {
     synonyms: normalizeStringList(firstDefined(data.synonyms, data.synonymes, data.syno, data.synonym)),
     antonyms: normalizeStringList(firstDefined(data.antonyms, data.antonymes, data.anto, data.antonym)),
     associations: normalizeStringList(firstDefined(data.associations, data.related, data.collocations, data.phrases, data.contexts)),
-    examples,
+    examples: uniqueExamples(examples),
     conjugation: data.conjugation || data.conjugations || data.forms || null,
     tags: ["法语助手", "生词本"],
     raw: sanitizeRawDetail(data)
@@ -314,7 +319,7 @@ function normalizeStringList(value) {
   if (!value) return [];
   if (Array.isArray(value)) return uniqueBy(value.flatMap(item => normalizeStringList(item)), normalizeForCompare);
   if (typeof value === "object") return uniqueBy(Object.values(value).flatMap(item => normalizeStringList(item)), normalizeForCompare);
-  return String(value)
+  return stripHtml(value)
     .split(/\n|；|;|,/)
     .map(item => item.trim())
     .filter(Boolean);
@@ -323,12 +328,11 @@ function normalizeStringList(value) {
 function firstFrenchDefinition(detail, definitions) {
   const direct = firstDefined(detail.frDefinition, detail.definition_fr, detail.def_fr);
   const [first] = normalizeStringList(direct || definitions);
-  return first || "法语助手未返回法语解释";
+  return first && !/[\u4e00-\u9fff]/.test(first) ? first : "法语助手未返回法语解释";
 }
 
 function firstTranslation(value) {
-  const [first] = normalizeStringList(value);
-  return first || "";
+  return cleanDefinitionText(normalizeStringList(value).join(" "));
 }
 
 function firstDefined(...values) {
@@ -342,6 +346,69 @@ function normalizeWordText(value) {
 
 function normalizeText(value) {
   return String(value ?? "").trim();
+}
+
+function stripHtml(value) {
+  return String(value ?? "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+/g, "\n")
+    .trim();
+}
+
+function cleanDefinitionText(value) {
+  const cleaned = stripHtml(value)
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !/^(v\.|n\.|adj\.|adv\.|pron\.|pré?p\.|conj\.)\b/i.test(line))
+    .filter(line => /[\u4e00-\u9fff]/.test(line));
+  return cleaned.slice(0, 4).join("；");
+}
+
+function parseExpText(value) {
+  const cleaned = stripHtml(value);
+  const lines = cleaned.split(/\n+/).map(line => line.trim()).filter(Boolean);
+  const zhLines = lines
+    .filter(line => /[\u4e00-\u9fff]/.test(line))
+    .filter(line => !/[a-zàâçéèêëîïôûùüÿñæœ]{3,}\s+[\wàâçéèêëîïôûùüÿñæœ'\- ]+[\u4e00-\u9fff]/i.test(line));
+  return {
+    cleaned,
+    zh: cleanDefinitionText(zhLines.join("\n")),
+    examples: lines.flatMap(line => exampleFromMixedLine(line)).filter(Boolean)
+  };
+}
+
+function exampleFromMixedLine(line) {
+  const text = stripHtml(line);
+  if (!/[\u4e00-\u9fff]/.test(text) || !/[a-zàâçéèêëîïôûùüÿñæœ]/i.test(text)) return [];
+  const match = text.match(/^(.+?[a-zàâçéèêëîïôûùüÿñæœ0-9'’.,;:!?() -])\s*([\u4e00-\u9fff].*)$/i);
+  if (!match) return [];
+  const fr = match[1].replace(/^\d+\.\s*/, "").trim();
+  const zh = match[2].trim();
+  if (fr.length < 3 || zh.length < 2) return [];
+  return [{ fr, zh }];
+}
+
+function parseGrammar(data, expText) {
+  const source = normalizeText(data.pos || data.partOfSpeech || data.nature || data.part_of_speech || expText);
+  if (/n\.?\s*f\.?|nom\s+féminin/i.test(source)) return { pos: "nom", gender: "féminin" };
+  if (/n\.?\s*m\.?|nom\s+masculin/i.test(source)) return { pos: "nom", gender: "masculin" };
+  if (/v\.|verbe/i.test(source)) return { pos: "verbe", gender: "" };
+  if (/adj\.|adjectif/i.test(source)) return { pos: "adjectif", gender: "" };
+  if (/adv\.|adverbe/i.test(source)) return { pos: "adverbe", gender: "" };
+  return { pos: "", gender: "" };
+}
+
+function uniqueExamples(examples) {
+  return uniqueBy(examples.filter(example => example?.fr), example => normalizeForCompare(`${example.fr} ${example.zh || ""}`));
 }
 
 function normalizeForCompare(value) {
