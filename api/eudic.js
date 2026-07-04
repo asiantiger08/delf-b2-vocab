@@ -153,9 +153,10 @@ async function getSingleWordDetail(endpoint, headers, language, word) {
     try {
       const payload = await callMcpTool(endpoint, headers, language, "get_user_vocab_by_words", { words: [word] });
       const [first] = extractArray(payload);
-      detail = extractDetailObject(first, word);
+      const fallback = extractDetailObject(first, word);
+      if (hasDetailContent(fallback)) detail = fallback;
     } catch {
-      detail = {};
+      // Keep the get_word payload if the account-corpus fallback is empty.
     }
   }
 
@@ -280,7 +281,9 @@ function extractDetailObject(payload, word) {
 
 function hasDetailContent(detail) {
   if (!detail || typeof detail !== "object") return false;
+  const rawText = stripHtml(firstDefined(detail.exp, detail.explains, detail.definition, detail.definitions, detail.translation, detail.translations, detail.trans, detail.meaning, detail.basic?.explains));
   return Boolean(
+    /[\u4e00-\u9fff]/.test(rawText) ||
     firstTranslation(firstDefined(detail.definitions, detail.definition, detail.explains, detail.exp, detail.translation, detail.translations, detail.trans, detail.meaning, detail.basic?.explains)) ||
     normalizeExamples(firstDefined(detail.examples, detail.sentences, detail.exampleSentences, detail.contexts)).length ||
     normalizeStringList(firstDefined(detail.synonyms, detail.synonymes, detail.syno, detail.synonym)).length ||
@@ -368,7 +371,7 @@ function cleanDefinitionText(value) {
     .split(/\n+/)
     .map(line => line.trim())
     .filter(Boolean)
-    .filter(line => !/^(v\.|n\.|adj\.|adv\.|pron\.|pré?p\.|conj\.)\b/i.test(line))
+    .map(line => line.replace(/^(v\.?\s*(t\.?|i\.?|dir\.?|indir\.?)?|n\.?\s*[fm]\.?|adj\.?|adv\.?|pron\.?|pré?p\.?|conj\.?)\s*/i, "").trim())
     .filter(line => /[\u4e00-\u9fff]/.test(line));
   return cleaned.slice(0, 4).join("；");
 }
