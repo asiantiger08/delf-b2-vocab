@@ -371,7 +371,7 @@ function cleanDefinitionText(value) {
     .split(/\n+/)
     .map(line => line.trim())
     .filter(Boolean)
-    .map(line => line.replace(/^(v\.?\s*(t\.?|i\.?|dir\.?|indir\.?)?|n\.?\s*[fm]\.?|adj\.?|adv\.?|pron\.?|pré?p\.?|conj\.?)\s*/i, "").trim())
+    .map(line => line.replace(/^(v\.?\s*(t\.?|i\.?|dir\.?|indir\.?)?|n\.?\s*[fm]\.?|n\.?|adj\.?|adv\.?|pron\.?|pré?p\.?|conj\.?)\s*/i, "").trim())
     .filter(line => /[\u4e00-\u9fff]/.test(line));
   return cleaned.slice(0, 4).join("；");
 }
@@ -404,6 +404,7 @@ function parseGrammar(data, expText) {
   const source = normalizeText(data.pos || data.partOfSpeech || data.nature || data.part_of_speech || expText);
   if (/n\.?\s*f\.?|nom\s+féminin/i.test(source)) return { pos: "nom", gender: "féminin" };
   if (/n\.?\s*m\.?|nom\s+masculin/i.test(source)) return { pos: "nom", gender: "masculin" };
+  if (/\bn\.?\b|nom/i.test(source)) return { pos: "nom", gender: "" };
   if (/v\.|verbe/i.test(source)) return { pos: "verbe", gender: "" };
   if (/adj\.|adjectif/i.test(source)) return { pos: "adjectif", gender: "" };
   if (/adv\.|adverbe/i.test(source)) return { pos: "adverbe", gender: "" };
