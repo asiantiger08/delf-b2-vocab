@@ -21,7 +21,7 @@
 - 随机测试：支持“法语 -> 中文”和“中文 -> 法语”双向默写。
 - 学习记录：本地保存已掌握词条、测试次数和正确率。
 - 词库导入：可以导入同样结构的 JSON 词库继续扩展。
-- 在线增强：可通过后端代理连接法语助手等词典 API，补充真实词典释义、近义词、反义词、搭配、例句和变位；返回内容会缓存在本机，离线时继续可用。
+- 在线增强：可通过后端代理连接法语助手 MCP，读取账号语料库中已有词条的释义和上下文；返回内容会缓存在本机，离线时继续可用。
 
 ## 法语助手 API 接入
 
@@ -30,14 +30,13 @@
 仓库中提供了 `api/lookup.js` 作为 Vercel/Serverless 代理模板。部署代理时设置这些环境变量：
 
 - `FRDIC_API_KEY`：你的 API key，格式为 `NIS {token}`。
-- `FRDIC_API_URL`：可选，默认 `https://api.frdic.com/api/open/v1/studylist/word`。
+- `FRDIC_API_URL`：可选，默认 `https://api.frdic.com/fr/mcp`。
 - `FRDIC_API_LANGUAGE`：可选，默认 `fr`。
 - `FRDIC_API_KEY_HEADER`：API 要求的 key 请求头名称，默认 `Authorization`。
 - `FRDIC_API_KEY_PREFIX`：可选。若 `FRDIC_API_KEY` 已经包含 `NIS `，这里不用设置。
-- `FRDIC_API_QUERY_PARAM`：查询词参数名，默认 `word`。
 - `ALLOWED_ORIGIN`：允许访问代理的前端域名，例如 `https://asiantiger08.github.io`。
 
-截图中的 MCP 地址 `https://api.frdic.com/{language}/mcp` 更适合 OpenClaw / Claude / Agent 工具调用。网页查词用上面的 OpenAPI `studylist/word` 更直接，前端已经会把点击的词条发送到代理接口。
+截图中的 MCP 地址 `https://api.frdic.com/{language}/mcp` 已接入代理。当前使用的 MCP 工具是 `get_user_vocab_by_words`，它查询的是法语助手账号语料库/已收录词条，不是公共词典全库。因此如果某个词没有被账号语料库收录，在线增强会提示“法语助手账号语料库中没有这个词条”，本地词库仍会正常显示。
 
 如果仍然只使用 GitHub Pages，网页会保留离线词库功能，但在线增强会提示“尚未部署 API 代理”。要启用在线增强，需要把代理部署到支持 Serverless 的平台，或把整站迁移到 Vercel/Netlify。
 

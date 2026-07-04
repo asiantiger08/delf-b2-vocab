@@ -1665,7 +1665,7 @@ async function enrichDetailFromApi(word) {
     const payload = await response.json();
     const normalized = normalizeLookupPayload(payload);
     if (!hasLookupContent(normalized)) {
-      renderDetailBody(word, lookupCache[cacheKey], "在线词典没有返回可用的增强字段。");
+      renderDetailBody(word, lookupCache[cacheKey], normalized.message || "在线词典没有返回可用的增强字段。");
       return;
     }
     lookupCache[cacheKey] = { ...normalized, fetchedAt: new Date().toISOString() };
@@ -1688,6 +1688,7 @@ function normalizeLookupPayload(payload = {}) {
   return {
     source: String(payload.source || data.source || "法语助手 API"),
     word: String(data.word || data.query || data.fr || ""),
+    message: String(data.message || payload.message || ""),
     definitions,
     synonyms: normalizeStringList(data.synonyms || data.synonymes || data.synonym || data.syno),
     antonyms: normalizeStringList(data.antonyms || data.antonymes || data.antonym || data.anto),
@@ -1761,6 +1762,7 @@ function renderApiSection(entry, status) {
       <h3>在线词典增强 · Enrichissement</h3>
       <p class="lookup-status">${escapeHtml(status || "等待在线词典返回内容。")}</p>
       ${entry ? `
+        ${entry.message ? `<p class="muted">${escapeHtml(entry.message)}</p>` : ""}
         ${entry.definitions?.length ? `
           <div class="online-block">
             <strong>词典解释</strong>
