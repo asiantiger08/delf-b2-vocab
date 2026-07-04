@@ -310,6 +310,37 @@ select {
   line-height: 1.55;
 }
 
+.online-section {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.lookup-status {
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--accent);
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.online-block {
+  margin-top: 12px;
+}
+
+.online-block > strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.online-block ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.online-block li {
+  margin-bottom: 8px;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

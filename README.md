@@ -21,6 +21,22 @@
 - 随机测试：支持“法语 -> 中文”和“中文 -> 法语”双向默写。
 - 学习记录：本地保存已掌握词条、测试次数和正确率。
 - 词库导入：可以导入同样结构的 JSON 词库继续扩展。
+- 在线增强：可通过后端代理连接法语助手等词典 API，补充真实词典释义、近义词、反义词、搭配、例句和变位；返回内容会缓存在本机，离线时继续可用。
+
+## 法语助手 API 接入
+
+不要把 API key 写进 `app.js`、`index.html` 或任何会部署到 GitHub Pages 的前端文件。前端已经固定调用 `/api/lookup?word=...`，真正的 key 应放在后端环境变量里。
+
+仓库中提供了 `api/lookup.js` 作为 Vercel/Serverless 代理模板。部署代理时设置这些环境变量：
+
+- `FRDIC_API_URL`：法语助手 API 的真实查询地址。
+- `FRDIC_API_KEY`：你的 API key。
+- `FRDIC_API_KEY_HEADER`：API 要求的 key 请求头名称，默认 `Authorization`。
+- `FRDIC_API_KEY_PREFIX`：请求头前缀，默认 `Bearer`；如果接口要求直接传 key，可设为空。
+- `FRDIC_API_QUERY_PARAM`：查询词参数名，默认 `q`。
+- `ALLOWED_ORIGIN`：允许访问代理的前端域名，例如 `https://asiantiger08.github.io`。
+
+如果仍然只使用 GitHub Pages，网页会保留离线词库功能，但在线增强会提示“尚未部署 API 代理”。要启用在线增强，需要把代理部署到支持 Serverless 的平台，或把整站迁移到 Vercel/Netlify。
 
 ## 分类标准
 
