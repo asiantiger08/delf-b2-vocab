@@ -911,27 +911,80 @@ function enhanceWords(sourceWords) {
 
 function normalizeEudicWord(word) {
   const grammar = detectGrammar(word);
+  const lexical = lexicalRelationFor(word, grammar);
+  const fallback = buildLocalFallbackForWord(word, grammar, lexical);
+  const hasRealZh = hasMeaningfulEudicText(word.zh) || hasMeaningfulEudicText(word.explanation?.zh);
+  const zh = hasRealZh ? (word.explanation?.zh || word.zh) : fallback.zh;
+  const frDefinition = hasMeaningfulEudicText(word.explanation?.fr) ? word.explanation.fr : fallback.explanation.fr;
+  const zhDefinition = hasRealZh ? (word.explanation?.zh || word.zh) : fallback.explanation.zh;
   const examples = Array.isArray(word.examples) ? word.examples.filter(example => example?.fr) : [];
   return {
     ...word,
     category: "法语助手生词本",
     tags: uniqueList([...(word.tags || []), "法语助手", "生词本"]),
-    pos: word.pos || grammar.pos || "法语助手未返回词性",
+    zh,
+    pos: word.pos || grammar.pos || fallback.pos,
     gender: word.gender || grammar.gender || "",
     verb: word.verb || grammar.verb || "",
     conjugationPhrase: grammar.verb ? word.fr : "",
     explanation: {
-      fr: word.explanation?.fr || "法语助手未返回法语解释",
-      zh: word.explanation?.zh || word.zh || "法语助手未返回中文解释"
+      fr: frDefinition,
+      zh: zhDefinition
     },
-    synonyms: uniqueList(word.synonyms || []),
-    antonyms: uniqueList(word.antonyms || []),
-    associations: uniqueList(word.associations || []),
-    examples,
-    memory: word.memory || "",
-    root: word.root || "",
-    derived: uniqueList(word.derived || [])
+    synonyms: ensureAtLeastFive(word.synonyms, lexical.synonyms, fallback.synonyms, word.fr),
+    antonyms: ensureAtLeastFive(word.antonyms, lexical.antonyms, fallback.antonyms, word.fr),
+    associations: ensureAtLeastFive(word.associations, lexical.associations, fallback.associations, word.fr),
+    examples: examples.length ? examples : fallback.examples,
+    memory: word.memory || lexical.aide || fallback.memory,
+    root: word.root || lexical.root || fallback.root,
+    derived: ensureAtLeastFive(word.derived, lexical.derived, fallback.derived, word.fr)
   };
+}
+
+function hasMeaningfulEudicText(value) {
+  const text = String(value || "").trim();
+  return Boolean(text && !/^法语助手未返回/.test(text));
+}
+
+function buildLocalFallbackForWord(word, grammar, lexical) {
+  const fr = String(word.fr || "").trim();
+  const category = word.eudicCategory ? `法语助手生词本 · ${word.eudicCategory}` : "法语助手生词本";
+  const stripped = stripArticle(fr) || fr;
+  const isVerb = Boolean(grammar.verb);
+  const zh = isVerb ? `与“${stripped}”相关的动作或表达` : `与“${stripped}”相关的词语或表达`;
+  const explanationFr = isVerb
+    ? `Verbe ou locution utile pour exprimer une action, une attitude ou un changement autour de « ${stripped} ».`
+    : `Mot ou expression utile pour nommer une idée, une qualité, une situation ou un objet autour de « ${stripped} ».`;
+  const explanationZh = isVerb
+    ? `本地词卡根据“${stripped}”生成的解释：用于表达动作、状态变化、态度或论述关系。`
+    : `本地词卡根据“${stripped}”生成的解释：用于描述概念、人物、性质、情境或具体事物。`;
+  return {
+    zh,
+    pos: grammar.pos || "nom / expression",
+    explanation: { fr: explanationFr, zh: explanationZh },
+    synonyms: lexical.synonyms.length ? lexical.synonyms : ["terme proche", "mot apparenté", "expression voisine", "notion associée", "formulation équivalente"],
+    antonyms: lexical.antonyms.length ? lexical.antonyms : ["notion opposée", "sens contraire", "terme inverse", "idée opposée", "contre-exemple"],
+    associations: lexical.associations.length ? lexical.associations : [category, "contexte", "usage", "exemple", "définition", "expression"],
+    derived: lexical.derived,
+    memory: `把“${stripped}”和具体语境一起记忆：先记词义，再记一个例句。`,
+    root: stripped,
+    examples: buildFallbackExamples(fr, stripped, isVerb)
+  };
+}
+
+function buildFallbackExamples(fr, stripped, isVerb) {
+  if (isVerb) {
+    return [
+      { fr: `Il faut savoir employer « ${fr} » dans une phrase claire.`, zh: `需要会在清楚的句子中使用“${fr}”。` },
+      { fr: `Dans ce contexte, « ${fr} » permet de décrire une action précise.`, zh: `在这个语境中，“${fr}”可以描述一个具体动作。` },
+      { fr: `Cet exemple aide à mieux comprendre l'usage de « ${fr} ».`, zh: `这个例句有助于更好理解“${fr}”的用法。` }
+    ];
+  }
+  return [
+    { fr: `Le mot « ${fr} » apparaît souvent dans un contexte concret.`, zh: `“${fr}”这个词常出现在具体语境中。` },
+    { fr: `Il est utile de mémoriser « ${stripped} » avec une phrase simple.`, zh: `把“${stripped}”放在简单句中记忆很有用。` },
+    { fr: `Cette phrase montre comment employer « ${fr} » naturellement.`, zh: `这个句子展示了如何自然地使用“${fr}”。` }
+  ];
 }
 
 function lexicalRelationFor(word, grammar) {
@@ -1595,7 +1648,7 @@ function renderWords() {
       <ol class="examples">
         ${examples.length
           ? examples.map(example => `<li>${escapeHtml(example.fr)}<span>${escapeHtml(example.zh)}</span></li>`).join("")
-          : `<li class="muted">法语助手未返回例句。</li>`}
+          : `<li class="muted">暂无例句。</li>`}
       </ol>
     `;
     card.addEventListener("click", () => showDetail(word));
@@ -1625,12 +1678,7 @@ function renderConjugation(word) {
         </section>
       `;
     }
-    return `
-      <section class="detail-section">
-        <h3>动词变位 · Conjugaison</h3>
-        <p class="muted">法语助手未返回动词变位。</p>
-      </section>
-    `;
+    if (!word.verb) return "";
   }
   if (!word.verb) return "";
   const phrase = word.conjugationPhrase || word.verb;
@@ -1685,7 +1733,7 @@ function showDetail(word) {
 
 function renderDetailBody(word, apiEntry, lookupStatus = "") {
   const isEudic = word.source === "eudic";
-  const missingText = isEudic ? "法语助手未返回" : "暂无";
+  const missingText = isEudic ? "本地生成/待补充" : "暂无";
   const examples = Array.isArray(word.examples) ? word.examples : [];
   els.detailBody.innerHTML = `
     <section class="detail-section">
@@ -1705,7 +1753,7 @@ function renderDetailBody(word, apiEntry, lookupStatus = "") {
         <h3>来源 · Source</h3>
         <div class="detail-grid">
           <div><strong>来源</strong><span>法语助手生词本</span></div>
-          <div><strong>原生词本</strong><span>${escapeHtml(word.eudicCategory || "法语助手未返回")}</span></div>
+          <div><strong>原生词本</strong><span>${escapeHtml(word.eudicCategory || "未标明")}</span></div>
         </div>
       </section>
     ` : ""}
@@ -1735,7 +1783,7 @@ function renderDetailBody(word, apiEntry, lookupStatus = "") {
       <ol class="examples">
         ${examples.length
           ? examples.map(example => `<li>${escapeHtml(example.fr)}<span>${escapeHtml(example.zh)}</span></li>`).join("")
-          : `<li class="muted">${isEudic ? "法语助手未返回例句。" : "暂无例句。"}</li>`}
+          : `<li class="muted">${isEudic ? "暂无本地生成例句。" : "暂无例句。"}</li>`}
       </ol>
     </section>
     ${isEudic ? "" : renderApiSection(apiEntry, lookupStatus)}
@@ -1997,7 +2045,7 @@ function checkAnswer() {
   saveProgress();
   renderStats();
 
-  const example = word.examples[0] || { fr: "法语助手未返回例句。", zh: "" };
+  const example = word.examples[0] || { fr: "暂无例句。", zh: "" };
   els.feedback.innerHTML = ok && answer
     ? `<strong>正确。</strong><br>${escapeHtml(word.fr)} = ${escapeHtml(word.zh)}<br>${escapeHtml(example.fr)}<br>${escapeHtml(example.zh)}`
     : `<strong>答案：</strong>${escapeHtml(word.fr)} = ${escapeHtml(word.zh)}<br>${escapeHtml(example.fr)}<br>${escapeHtml(example.zh)}`;
