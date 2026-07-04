@@ -1858,9 +1858,10 @@ async function enrichEudicDetail(word) {
       renderDetailBody(word, null, "法语助手没有返回可用释义。");
       return;
     }
-    updateCachedEudicWord(detail);
+    const enhancedDetail = enhanceWords([detail])[0];
+    updateCachedEudicWord(enhancedDetail);
     if (state.detailWordKey === word.fr && els.detailDialog.open) {
-      renderDetailBody(detail, null, "已从法语助手补充释义，并缓存到本机。");
+      renderDetailBody(enhancedDetail, null, "已补充释义，并保留本地生成的词汇关系。");
     }
   } catch {
     renderDetailBody(word, null, "无法连接法语助手详情接口；请稍后重试。");
